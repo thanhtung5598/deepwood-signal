@@ -2,8 +2,6 @@ import * as THREE from "three";
 import { WebGPURenderer } from "three/webgpu";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
-import { createInPlaceClip } from "./animation-utils.js";
-import { createDeferredAssetLoader } from "./deferred-asset-loader.js";
 import { createBackgroundModelLoader } from "./background-model-loader.js";
 import { createStartupProgressLoader, advanceLoadingEstimate } from "./startup-loading-progress.js";
 import modelByteSizes from "virtual:model-sizes";
@@ -40,22 +38,8 @@ const ANCIENT_OAK_Z = -34;
 const ANCIENT_OAK_X = pathCenterX(ANCIENT_OAK_Z) - 10.5;
 const PLAYER_WALK_SPEED = 4.4;
 const PLAYER_SPRINT_SPEED = PLAYER_WALK_SPEED * 2;
-const FOREST_GUARDIAN_WALK_SPEED = 4.2;
-const FOREST_GUARDIAN_SPRINT_SPEED = 7.4;
-const FOREST_GUARDIAN_TARGET_HEIGHT = 2.35;
-const FOREST_GUARDIAN_ROOT_BONE = "mixamorigHips";
-const FOREST_GUARDIAN_ANIMATIONS = {
-  idle: "idle.001",
-  walk: "walk.001",
-  run: "run.001",
-  jump: "jump.001",
-};
-const FOREST_GUARDIAN_TIME_SCALES = {
-  idle: 1,
-  walk: 2.6,
-  run: 1.28,
-  jump: 3.1,
-};
+const ROUND_TWO_WALK_SPEED = 4.2;
+const ROUND_TWO_SPRINT_SPEED = 7.4;
 const HUNTER_MODEL_HEADING_OFFSET = Math.PI - Math.PI / 4;
 const HUNTER_CHASE_DISTANCE = 14;
 const HUNTER_STOP_CHASE_DISTANCE = 18;
@@ -145,9 +129,6 @@ const reduceIntroMotion = window.matchMedia("(prefers-reduced-motion: reduce)").
 const restartButton = document.querySelector("#restart-button");
 const pauseMenu = document.querySelector("#pause-menu");
 const resumeButton = document.querySelector("#resume-button");
-const roundLoading = document.querySelector("#round-loading");
-const roundLoadingStatus = document.querySelector("#round-loading-status");
-const roundLoadingRetry = document.querySelector("#round-loading-retry");
 const roundLabel = document.querySelector("#round-label");
 const missionText = document.querySelector("#mission-text");
 const timerElement = document.querySelector("#timer");
@@ -214,9 +195,6 @@ const useCompatibilityRenderer =
   !("gpu" in navigator);
 // This existing animated model is also the desktop's lightweight first load.
 const playerModelUrl = "/models/futuristic-robot-animated-mobile.glb";
-const forestGuardianModelUrl = useCompatibilityRenderer
-  ? "/models/forest-guardian-mecha-animated-mobile.glb"
-  : "/models/forest-guardian-mecha-animated.glb";
 
 const SOUND_URLS = {
   robotWalk: "/audio/game-v1/robot-walk.wav",
@@ -342,21 +320,21 @@ function updateMovementSounds(deltaTime, running) {
   footstepCooldown -= deltaTime;
   if (footstepCooldown > 0) return;
 
-  const guardian = currentRound === 2;
-  const baseRate = guardian ? 0.82 : 1;
+  const roundTwo = currentRound === 2;
+  const baseRate = roundTwo ? 0.82 : 1;
   const variation = footstepIndex % 2 === 0 ? 0.035 : -0.025;
   playGameSound(running ? "robotRun" : "robotWalk", {
-    volume: running ? (guardian ? 0.62 : 0.52) : guardian ? 0.52 : 0.42,
+    volume: running ? (roundTwo ? 0.62 : 0.52) : roundTwo ? 0.52 : 0.42,
     playbackRate: baseRate + variation,
   });
   footstepIndex += 1;
-  footstepCooldown = (running ? 0.29 : 0.46) * (guardian ? 1.08 : 1);
+  footstepCooldown = (running ? 0.29 : 0.46) * (roundTwo ? 1.08 : 1);
 }
 
 updateSoundControls();
 
 const loadingManager = new THREE.LoadingManager();
-// Startup waits for the lightweight player and detailed evergreen trees.
+// Startup waits for the lightweight player, evergreen trees, birds, and rocks.
 const startupModelLoader = createStartupProgressLoader(
   new GLTFLoader(loadingManager), modelByteSizes, updateLoadingProgress,
 );
@@ -364,13 +342,7 @@ const startupModelLoader = createStartupProgressLoader(
 const backgroundModelLoader = createBackgroundModelLoader(
   new GLTFLoader(new THREE.LoadingManager()),
   [
-    "/models/fantasy-bird.glb",
-    "/models/mossy-faceted-boulder.glb",
     "/models/futuristic-robot-animated.glb",
-    "/models/weathered-hollow-log.glb",
-    "/models/stylized-multi-trunk-leafy-shrub.glb",
-    "/models/bountiful-red-berry-bush.glb",
-    "/models/majestic-ancient-oak.glb",
   ],
   1,
 );
@@ -391,8 +363,9 @@ const modelAssetsReady = new Promise((resolve) => {
 function formatAssetName(url) {
   const labels = {
     "/models/stylized-layered-evergreen-tree.glb": "cây rừng",
-    "/models/majestic-ancient-oak.glb": "cây cổ thụ",
     "/models/futuristic-robot-animated-mobile.glb": "nhân vật",
+    "/models/fantasy-bird.glb": "chim",
+    "/models/mossy-faceted-boulder.glb": "đá",
   };
   if (labels[url]) return labels[url];
   const filename = decodeURIComponent(url.split("/").pop() || url);
@@ -662,26 +635,23 @@ const trees = createTrees(random, treeColliders, {
   worldHalfExtent: GAME_HALF_WORLD,
 });
 const ancientOak = createAncientOak(treeColliders, {
-  modelLoader: backgroundModelLoader,
-  modelUrl: useCompatibilityRenderer ? null : "/models/majestic-ancient-oak.glb",
+  modelUrl: null,
   position: {
     x: ANCIENT_OAK_X,
     z: ANCIENT_OAK_Z,
   },
   rotationY: 0.62,
 });
-// Model có bộ rễ rất rộng. Hạ toàn bộ cây xuống thay vì đặt đúng tại đáy
-// bounding box để các đầu rễ cắm vào sườn địa hình, không còn cảm giác lơ lửng.
+// Giữ cây cổ thụ procedural ở cùng vị trí trong cảnh và collision.
 ancientOak.position.y -= 0.72;
 const rocks = createRocks(random, rockColliders, {
-  modelLoader: backgroundModelLoader,
+  modelLoader: startupModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/mossy-faceted-boulder.glb",
   castShadow: false,
   worldHalfExtent: GAME_HALF_WORLD,
 });
 const logs = createLogs(random, logColliders, [...treeColliders, ...rockColliders], {
-  modelLoader: backgroundModelLoader,
-  modelUrl: useCompatibilityRenderer ? null : "/models/weathered-hollow-log.glb",
+  modelUrl: null,
   castShadow: false,
   worldHalfExtent: GAME_HALF_WORLD,
 });
@@ -690,10 +660,7 @@ const shrubs = createShrubs(
   shrubColliders,
   [...treeColliders, ...rockColliders, ...logColliders],
   {
-    modelLoader: backgroundModelLoader,
-    modelUrl: useCompatibilityRenderer
-      ? null
-      : "/models/stylized-multi-trunk-leafy-shrub.glb",
+    modelUrl: null,
     castShadow: false,
     receiveShadow: false,
     worldHalfExtent: GAME_HALF_WORLD,
@@ -704,10 +671,7 @@ const berryBushes = createBerryBushes(
   berryBushColliders,
   [...treeColliders, ...rockColliders, ...logColliders, ...shrubColliders],
   {
-    modelLoader: backgroundModelLoader,
-    modelUrl: useCompatibilityRenderer
-      ? null
-      : "/models/bountiful-red-berry-bush.glb",
+    modelUrl: null,
     castShadow: false,
     receiveShadow: false,
     worldHalfExtent: GAME_HALF_WORLD,
@@ -877,13 +841,6 @@ const player = {
   modelBasePosition: new THREE.Vector3(),
   modelBaseScale: new THREE.Vector3(1, 1, 1),
   modelBaseQuaternion: new THREE.Quaternion(),
-  transformedModel: null,
-  transformedMixer: null,
-  transformedActions: new Map(),
-  transformedActiveAction: null,
-  transformedActiveState: "",
-  transformedBasePosition: new THREE.Vector3(),
-  transformedBaseScale: new THREE.Vector3(1, 1, 1),
 };
 
 function createVictoryTransformationFx() {
@@ -991,12 +948,7 @@ const transformedCore = createTransformedCore();
 playerRoot.add(victoryTransformationFx, transformedCore);
 
 function playAnimation(name) {
-  const transformed = currentRound === 2;
-  const mixer = transformed ? player.transformedMixer : player.mixer;
-  const actions = transformed ? player.transformedActions : player.actions;
-  const activeState = transformed
-    ? player.transformedActiveState
-    : player.activeState;
+  const { mixer, actions, activeState } = player;
   if (!mixer || activeState === name) return;
   const nextAction = actions.get(name);
   if (!nextAction) return;
@@ -1005,29 +957,21 @@ function playAnimation(name) {
   nextAction.enabled = true;
   nextAction.setEffectiveWeight(1);
   nextAction.setEffectiveTimeScale(
-    transformed
-      ? (FOREST_GUARDIAN_TIME_SCALES[name] ?? 1)
-      : name === "run"
-        ? 1.35
-        : name === "walk"
-          ? 1.12
-          : name === "jump"
-            ? 1.08
-            : 1,
+    name === "run"
+      ? 1.35
+      : name === "walk"
+        ? 1.12
+        : name === "jump"
+          ? 1.08
+          : 1,
   );
   const playOnce = name === "jump" || name === "wave";
   nextAction.setLoop(playOnce ? THREE.LoopOnce : THREE.LoopRepeat, playOnce ? 1 : Infinity);
   nextAction.clampWhenFinished = playOnce;
   nextAction.fadeIn(0.16).play();
-  if (transformed) {
-    player.transformedActiveAction?.fadeOut(0.16);
-    player.transformedActiveAction = nextAction;
-    player.transformedActiveState = name;
-  } else {
-    player.activeAction?.fadeOut(0.16);
-    player.activeAction = nextAction;
-    player.activeState = name;
-  }
+  player.activeAction?.fadeOut(0.16);
+  player.activeAction = nextAction;
+  player.activeState = name;
 }
 
 let pendingDetailedPlayer = null;
@@ -1042,7 +986,7 @@ function installPlayerModel(gltf) {
   bounds.setFromObject(model);
   const center = bounds.getCenter(new THREE.Vector3());
   model.position.set(-center.x, -bounds.min.y, -center.z);
-  model.visible = currentRound === 1 && cameraMode === "third";
+  model.visible = cameraMode === "third";
   model.traverse((object) => {
     if (!object.isMesh) return;
     const weights = object.geometry.getAttribute("skinWeight");
@@ -1082,7 +1026,7 @@ function installPlayerModel(gltf) {
   player.modelBasePosition.copy(model.position);
   player.modelBaseScale.copy(model.scale);
   player.modelBaseQuaternion.copy(model.quaternion);
-  if (currentRound === 1) playAnimation(animation);
+  playAnimation(animation);
   if (previousModel) {
     previousMixer?.stopAllAction();
     previousMixer?.uncacheRoot(previousModel);
@@ -1124,7 +1068,7 @@ if (!useCompatibilityRenderer) {
     "/models/futuristic-robot-animated.glb",
     (gltf) => {
       // The transformation keeps references to the original robot's bones.
-      if (gameState === "transforming" || gameState === "loading-round-two") {
+      if (gameState === "transforming") {
         pendingDetailedPlayer = gltf;
       } else {
         installPlayerModel(gltf);
@@ -1134,59 +1078,6 @@ if (!useCompatibilityRenderer) {
     (error) => console.warn("Giữ robot nhẹ vì model chi tiết chưa tải được", error),
   );
 }
-
-const loadForestGuardian = createDeferredAssetLoader(async () => {
-  // Load on transformation, outside the startup progress/gate.
-  const loader = new GLTFLoader(new THREE.LoadingManager());
-  const gltf = await loader.loadAsync(forestGuardianModelUrl);
-  const model = gltf.scene;
-  model.updateMatrixWorld(true);
-  const bounds = new THREE.Box3().setFromObject(model);
-  const sourceHeight = bounds.getSize(new THREE.Vector3()).y;
-  model.scale.setScalar(
-    sourceHeight > 0 ? FOREST_GUARDIAN_TARGET_HEIGHT / sourceHeight : 1,
-  );
-  model.updateMatrixWorld(true);
-  bounds.setFromObject(model);
-  const center = bounds.getCenter(new THREE.Vector3());
-  model.position.set(-center.x, -bounds.min.y, -center.z);
-  model.traverse((object) => {
-    if (!object.isMesh) return;
-    object.castShadow = true;
-    object.receiveShadow = true;
-  });
-  model.visible = false;
-  const mixer = new THREE.AnimationMixer(model);
-  const actions = new Map();
-  const rootPosition = model.getObjectByName(
-    FOREST_GUARDIAN_ROOT_BONE,
-  )?.position;
-  for (const [state, clipName] of Object.entries(
-    FOREST_GUARDIAN_ANIMATIONS,
-  )) {
-    const sourceClip = gltf.animations.find((clip) => clip.name === clipName);
-    if (!sourceClip) continue;
-    const playableClip = rootPosition
-      ? createInPlaceClip(
-          sourceClip,
-          FOREST_GUARDIAN_ROOT_BONE,
-          rootPosition,
-          state === "jump",
-        )
-      : sourceClip;
-    actions.set(
-      state,
-      mixer.clipAction(playableClip),
-    );
-  }
-  // Publish the model only after its animation setup has also succeeded.
-  playerRoot.add(model);
-  player.transformedBasePosition.copy(model.position);
-  player.transformedBaseScale.copy(model.scale);
-  player.transformedMixer = mixer;
-  player.transformedActions = actions;
-  player.transformedModel = model;
-});
 
 function createBeacon() {
   const group = new THREE.Group();
@@ -1472,7 +1363,7 @@ const hunters = [
 // Mobile giữ Bóng Săn procedural để tránh giải nén thêm ba texture 4K. Desktop
 // tải một lần rồi clone cả skeleton cho bốn Bóng Săn.
 if (!useCompatibilityRenderer) {
-  backgroundModelLoader.load(
+  startupModelLoader.load(
     "/models/fantasy-bird.glb",
     (gltf) => {
     gltf.scene.updateMatrixWorld(true);
@@ -1648,14 +1539,6 @@ function restoreVictoryVisuals() {
   victoryTransformationFx.visible = false;
   transformedCore.visible = false;
   victoryFlash.classList.remove("is-active");
-  player.transformedMixer?.stopAllAction();
-  player.transformedActiveAction = null;
-  player.transformedActiveState = "";
-  if (player.transformedModel) {
-    player.transformedModel.visible = false;
-    player.transformedModel.position.copy(player.transformedBasePosition);
-    player.transformedModel.scale.copy(player.transformedBaseScale);
-  }
   if (player.model) {
     player.mixer?.stopAllAction();
     player.model.visible = true;
@@ -1698,68 +1581,37 @@ function beginVictoryTransformation() {
     swapped: false,
     bones,
     materials: collectVictoryMaterials(player.model),
-    guardianLoad: loadForestGuardian(),
   };
-  // Surface any failure at the model swap, with the existing retry control.
-  void victoryTransformation.guardianLoad.catch(() => {});
   victoryTransformationFx.visible = true;
   missionText.textContent = "Năng lượng đang cộng hưởng";
   showToast("Lõi năng lượng thức tỉnh — bắt đầu biến hình!");
 }
 
-async function waitForRoundTwo(guardianLoad = loadForestGuardian()) {
-  gameState = "loading-round-two";
-  pressedKeys.clear();
-  resetTouchInput();
-  mouseDragging = false;
-  player.velocity.set(0, 0, 0);
-  player.targetVelocity.set(0, 0, 0);
-  document.exitPointerLock?.();
-  roundLoading.hidden = false;
-  roundLoading.classList.remove("is-error");
-  roundLoadingStatus.textContent = "Đang chuẩn bị Forest Guardian…";
-  roundLoadingRetry.hidden = true;
-  roundLoadingRetry.disabled = true;
-
-  try {
-    await guardianLoad;
-    if (gameState !== "loading-round-two") return;
-    roundLoading.hidden = true;
-    gameState = "transforming";
-  } catch (error) {
-    if (gameState !== "loading-round-two") return;
-    console.error("Không tải được Forest Guardian Mecha", error);
-    roundLoading.classList.add("is-error");
-    roundLoadingStatus.textContent =
-      "Chưa tải được Forest Guardian. Kiểm tra kết nối và thử lại.";
-    roundLoadingRetry.hidden = false;
-    roundLoadingRetry.disabled = false;
-    roundLoadingRetry.focus();
-  }
-}
-
-function swapToTransformedRobot() {
+function activatePoweredRobot() {
   if (!victoryTransformation || victoryTransformation.swapped) return;
   victoryTransformation.swapped = true;
   victoryFlash.classList.remove("is-active");
   void victoryFlash.offsetWidth;
   victoryFlash.classList.add("is-active");
 
-  if (player.model) player.model.visible = false;
-  if (player.transformedModel) {
-    player.transformedModel.visible = true;
-    player.transformedModel.position.copy(player.transformedBasePosition);
-    player.transformedModel.position.y -= 0.08;
-    player.transformedModel.scale
-      .copy(player.transformedBaseScale)
-      .multiplyScalar(0.84);
-    const idleAction = player.transformedActions.get("idle");
-    idleAction?.reset().fadeIn(0.18).play();
-    player.transformedActiveAction = idleAction ?? null;
-    player.transformedActiveState = idleAction ? "idle" : "";
+  for (const { bone, base } of victoryTransformation.bones) {
+    bone.quaternion.copy(base);
   }
+  for (const state of victoryTransformation.materials) {
+    state.material.emissive.copy(state.emissive);
+    state.material.emissiveIntensity = state.emissiveIntensity;
+  }
+  if (player.model) {
+    player.model.visible = true;
+    player.model.position.copy(player.modelBasePosition);
+    player.model.scale.copy(player.modelBaseScale);
+    player.model.quaternion.copy(player.modelBaseQuaternion);
+  }
+  player.activeAction = null;
+  player.activeState = "";
+  playAnimation("idle");
   transformedCore.visible = true;
-  missionText.textContent = "Forest Guardian đã thức tỉnh";
+  missionText.textContent = "Robot đã được nạp năng lượng";
 }
 
 function updateVictoryTransformation(deltaTime) {
@@ -1823,22 +1675,8 @@ function updateVictoryTransformation(deltaTime) {
   particles.position.y = -0.18 + Math.sin(time * 5) * 0.08;
   light.intensity = fxStrength * 5.5;
 
-  if (time >= VICTORY_SWAP_TIME) {
-    if (!player.transformedModel) {
-      victoryTransformation.time = VICTORY_SWAP_TIME;
-      void waitForRoundTwo(victoryTransformation.guardianLoad);
-      return;
-    }
-    swapToTransformedRobot();
-  }
-  if (victoryTransformation.swapped && player.transformedModel) {
-    const reveal = smoothProgress(time, VICTORY_SWAP_TIME, VICTORY_SWAP_TIME + 0.58);
-    player.transformedModel.scale
-      .copy(player.transformedBaseScale)
-      .multiplyScalar(0.84 + reveal * 0.16);
-    player.transformedModel.position.copy(player.transformedBasePosition);
-    player.transformedModel.position.y -= (1 - reveal) * 0.08;
-    player.transformedMixer?.update(deltaTime);
+  if (time >= VICTORY_SWAP_TIME) activatePoweredRobot();
+  if (victoryTransformation.swapped) {
     const pulse = 1 + Math.sin(time * 6) * 0.08;
     transformedCore.userData.halo.scale.setScalar(pulse);
     transformedCore.userData.core.rotation.y += deltaTime * 1.8;
@@ -1952,33 +1790,31 @@ function beginRoundTwo() {
   player.jumpHeight = 0;
   player.grounded = true;
   player.mixer?.stopAllAction();
-  if (player.model) player.model.visible = false;
-  if (player.transformedModel) {
-    player.transformedModel.visible = cameraMode === "third";
-    player.transformedModel.position.copy(player.transformedBasePosition);
-    player.transformedModel.scale.copy(player.transformedBaseScale);
+  if (player.model) {
+    player.model.visible = cameraMode === "third";
+    player.model.position.copy(player.modelBasePosition);
+    player.model.scale.copy(player.modelBaseScale);
+    player.model.quaternion.copy(player.modelBaseQuaternion);
   }
   transformedCore.visible = true;
-  player.transformedMixer?.stopAllAction();
-  player.transformedActiveAction = null;
-  player.transformedActiveState = "";
+  player.activeAction = null;
+  player.activeState = "";
   playAnimation("idle");
   playerMarker.visible = cameraMode === "third";
   targetThirdPersonDistance = THIRD_PERSON_DISTANCE;
   cameraModeElement.textContent = "THIRD PERSON";
   timerElement.parentElement.classList.remove("is-urgent");
-  roundLabel.textContent = "Vòng 2 · Forest Guardian";
-  missionText.textContent = "Thu thập 6 lõi bằng hình dạng mới";
+  roundLabel.textContent = "Vòng 2 · Thu hồi năng lượng";
+  missionText.textContent = "Thu thập 6 lõi năng lượng vòng 2";
   resetRoundObjects();
   updateSpatialCulling(0, true);
   updateHud();
   installPendingDetailedPlayer();
   requestGamePointerLock();
-  showToast("Vòng 2 — dùng Forest Guardian thu thập năng lượng!");
+  showToast("Vòng 2 — tiếp tục thu thập năng lượng cùng robot!");
 }
 
 function resetGame() {
-  roundLoading.hidden = true;
   currentRound = 1;
   randomizeWeather();
   restoreVictoryVisuals();
@@ -2100,7 +1936,7 @@ function showGameResult(won, reason = "", resultTime = elapsedTime) {
       ? "Bóng tối đã bắt kịp bạn."
       : "Hoàng hôn đã buông xuống.";
   document.querySelector("#result-copy").textContent = won
-    ? "Forest Guardian đã thu hồi trọn vẹn nguồn năng lượng của khu rừng."
+    ? "Robot đã thu hồi trọn vẹn nguồn năng lượng của khu rừng qua hai vòng nhiệm vụ."
     : "Rừng vẫn còn ở đó. Điều chỉnh lộ trình và thử lại nhiệm vụ.";
   document.querySelector("#result-time").textContent = formatTime(resultTime, false);
   document.querySelector("#result-cores").textContent = `${collectedCores} / ${TOTAL_CORES}`;
@@ -2172,10 +2008,7 @@ function toggleCameraMode() {
   cameraModeElement.textContent = cameraMode === "third" ? "THIRD PERSON" : "FIRST PERSON";
   playerMarker.visible = cameraMode === "third";
   if (player.model) {
-    player.model.visible = currentRound === 1 && cameraMode === "third";
-  }
-  if (player.transformedModel) {
-    player.transformedModel.visible = currentRound === 2 && cameraMode === "third";
+    player.model.visible = cameraMode === "third";
   }
   transformedCore.visible = currentRound === 2 && cameraMode === "third";
   pitch = THREE.MathUtils.clamp(
@@ -2279,9 +2112,9 @@ function updatePlayer(deltaTime) {
   }
 
   const walkSpeed =
-    currentRound === 2 ? FOREST_GUARDIAN_WALK_SPEED : PLAYER_WALK_SPEED;
+    currentRound === 2 ? ROUND_TWO_WALK_SPEED : PLAYER_WALK_SPEED;
   const sprintSpeed =
-    currentRound === 2 ? FOREST_GUARDIAN_SPRINT_SPEED : PLAYER_SPRINT_SPEED;
+    currentRound === 2 ? ROUND_TWO_SPRINT_SPEED : PLAYER_SPRINT_SPEED;
   const targetSpeed = moving
     ? (running ? sprintSpeed : walkSpeed) * inputAmount
     : 0;
@@ -2402,7 +2235,7 @@ function updateCores(deltaTime) {
         showToast("Đủ năng lượng — quay về UFO beacon!");
       } else {
         missionText.textContent = "Năng lượng vòng 2 đã hoàn tất";
-        showToast("Forest Guardian đã thu hồi đủ năng lượng!");
+        showToast("Robot đã thu hồi đủ năng lượng vòng 2!");
         finishGame(true);
       }
     } else {
@@ -3208,9 +3041,6 @@ startButton.addEventListener("click", () => {
   startGame();
 });
 restartButton.addEventListener("click", startGame);
-roundLoadingRetry.addEventListener("click", () => {
-  if (gameState === "loading-round-two") void waitForRoundTwo();
-});
 
 function resize() {
   const width = window.innerWidth;
@@ -3256,7 +3086,7 @@ camera.position.set(
 const clock = new THREE.Clock();
 function gameLoop() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
-  if (pauseMenu.open || gameState === "loading-round-two") {
+  if (pauseMenu.open) {
     updateAtmosphere();
     renderer.render(scene, camera);
     requestAnimationFrame(gameLoop);
@@ -3294,11 +3124,7 @@ function gameLoop() {
   updateAtmosphere();
   updateHud();
   updateMinimap(deltaTime);
-  if (currentRound === 2) {
-    player.transformedMixer?.update(deltaTime);
-  } else {
-    player.mixer?.update(deltaTime);
-  }
+  player.mixer?.update(deltaTime);
 
   sun.position.set(playerRoot.position.x - 18, playerRoot.position.y + 30, playerRoot.position.z + 14);
   sun.target.position.copy(playerRoot.position);

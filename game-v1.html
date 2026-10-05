@@ -14,18 +14,18 @@
     <meta name="theme-color" content="#07100d" />
     <meta
       name="keywords"
-      content="Deepwood Signal, game sinh tồn 3D, game robot, Forest Guardian Mecha, game WebGL, game mobile"
+      content="Deepwood Signal, game sinh tồn 3D, game robot, game WebGL, game mobile"
     />
     <meta
       name="description"
-      content="Chơi Deepwood Signal, game sinh tồn 3D nơi bạn thu thập lõi năng lượng, né bóng săn và tiến hóa thành Forest Guardian Mecha trong khu rừng."
+      content="Chơi Deepwood Signal, game sinh tồn 3D nơi bạn thu thập lõi năng lượng, né bóng săn và hoàn thành hai vòng nhiệm vụ trong khu rừng."
     />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="vi_VN" />
-    <meta property="og:title" content="Deepwood Signal | Game sinh tồn Forest Guardian 3D" />
+    <meta property="og:title" content="Deepwood Signal | Game sinh tồn robot 3D" />
     <meta
       property="og:description"
-      content="Thu thập lõi năng lượng, sống sót trong rừng và tiến hóa thành Forest Guardian Mecha."
+      content="Thu thập lõi năng lượng, sống sót trong rừng và cùng robot hoàn thành hai vòng nhiệm vụ."
     />
     <meta property="og:image" content="/og/deepwood-signal.png" />
     <meta property="og:image:type" content="image/png" />
@@ -33,10 +33,10 @@
     <meta property="og:image:height" content="909" />
     <meta
       property="og:image:alt"
-      content="Deepwood Signal — Forest Guardian Mecha với lõi năng lượng phát sáng giữa khu rừng."
+      content="Deepwood Signal — Robot với lõi năng lượng phát sáng giữa khu rừng."
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Deepwood Signal | Forest Guardian 3D" />
+    <meta name="twitter:title" content="Deepwood Signal | Robot sinh tồn 3D" />
     <meta
       name="twitter:description"
       content="Game sinh tồn 3D trong khu rừng Deepwood Signal."
@@ -44,7 +44,7 @@
     <meta name="twitter:image" content="/og/deepwood-signal.png" />
     <meta
       name="twitter:image:alt"
-      content="Deepwood Signal — Forest Guardian Mecha với lõi năng lượng phát sáng giữa khu rừng."
+      content="Deepwood Signal — Robot với lõi năng lượng phát sáng giữa khu rừng."
     />
     <link rel="icon" href="/icons/deepwood-signal.svg" type="image/svg+xml" />
     <link rel="icon" href="/icons/deepwood-favicon-32.png" sizes="32x32" type="image/png" />
@@ -58,7 +58,7 @@
       media="print"
       onload="this.media='all'"
     />
-    <title>Deepwood Signal | Game sinh tồn Forest Guardian 3D</title>
+    <title>Deepwood Signal | Game sinh tồn robot 3D</title>
     <link rel="stylesheet" href="/game-v1.css" />
   </head>
   <body>
@@ -266,7 +266,7 @@
         <p>
           Thu hồi 6 lõi năng lượng bị phân tán, tránh những bóng săn và trở về
           UFO beacon trước khi hoàng hôn nuốt lấy khu rừng. Đứng yên trong vòng sáng
-          để tiến hóa, rồi tiếp tục vòng 2 bằng Forest Guardian.
+          để nạp năng lượng, rồi cùng robot tiếp tục vòng 2.
         </p>
         <div class="briefing-transmission" id="briefing-transmission" role="status" aria-live="polite" hidden>
           <i aria-hidden="true"></i><span id="briefing-status">Đang nhận tín hiệu nhiệm vụ…</span>
@@ -274,21 +274,11 @@
         <div class="briefing" id="mission-briefing">
           <span><b>01</b> Thu thập 6 lõi năng lượng</span>
           <span><b>02</b> Tránh những bóng săn</span>
-          <span><b>03</b> Trở về UFO để tiến hóa</span>
+          <span><b>03</b> Trở về UFO để nạp năng lượng</span>
         </div>
         <button class="primary-button" id="start-button" type="button" disabled>
           <span id="start-button-label">Bắt đầu nhiệm vụ</span><span aria-hidden="true">→</span>
         </button>
-      </section>
-
-      <section class="round-loading" id="round-loading" hidden aria-labelledby="round-loading-title">
-        <div class="round-loading__panel">
-          <div class="modal__eyebrow">Vòng 1 hoàn tất</div>
-          <h2 id="round-loading-title">Chuẩn bị vòng 2</h2>
-          <div class="round-loading__spinner" aria-hidden="true"></div>
-          <p id="round-loading-status" role="status" aria-live="polite">Đang chuẩn bị Forest Guardian…</p>
-          <button class="primary-button" id="round-loading-retry" type="button" hidden>Thử tải lại</button>
-        </div>
       </section>
 
       <section class="modal result-modal" id="result-modal" aria-live="assertive">
