@@ -2,6 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createBackgroundModelLoader } from "../src/background-model-loader.js";
 
+test("configured priorities override registration order and keep unlisted assets last", async () => {
+  const requested = [];
+  const loader = createBackgroundModelLoader({
+    async loadAsync(url) { requested.push(url); return url; },
+  }, ["bird", "rocks", "robot-detail", "logs", "shrubs", "berries", "oak"]);
+  for (const url of ["extra-a", "oak", "rocks", "logs", "shrubs", "berries", "robot-detail", "bird", "extra-b"]) {
+    loader.load(url);
+  }
+  await Promise.resolve();
+  assert.deepEqual(requested, []);
+  await loader.start();
+  assert.deepEqual(requested, ["bird", "rocks", "robot-detail", "logs", "shrubs", "berries", "oak", "extra-a", "extra-b"]);
+});
+
 test("scene details do not download until the background queue is started", async () => {
   const requested = [];
   const installed = [];

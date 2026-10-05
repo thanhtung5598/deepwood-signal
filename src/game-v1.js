@@ -356,6 +356,15 @@ const startupModelLoader = createStartupProgressLoader(
 // Other scene details start loading in the background after the startup screen.
 const backgroundModelLoader = createBackgroundModelLoader(
   new GLTFLoader(new THREE.LoadingManager()),
+  [
+    "/models/fantasy-bird.glb",
+    "/models/mossy-faceted-boulder.glb",
+    "/models/futuristic-robot-animated.glb",
+    "/models/weathered-hollow-log.glb",
+    "/models/stylized-multi-trunk-leafy-shrub.glb",
+    "/models/bountiful-red-berry-bush.glb",
+    "/models/majestic-ancient-oak.glb",
+  ],
 );
 const failedAssets = new Set();
 const loadingStartedAt = performance.now();
