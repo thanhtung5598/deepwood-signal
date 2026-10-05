@@ -347,7 +347,7 @@ function updateMovementSounds(deltaTime, running) {
 updateSoundControls();
 
 const loadingManager = new THREE.LoadingManager();
-// Startup waits for the lightweight player, detailed trees, and rocks.
+// Startup waits for the lightweight player and detailed trees.
 const startupModelLoader = new GLTFLoader(loadingManager);
 // Other scene details load during play.
 const backgroundModelLoader = createBackgroundModelLoader(
@@ -617,7 +617,7 @@ const ancientOak = createAncientOak(treeColliders, {
 // bounding box để các đầu rễ cắm vào sườn địa hình, không còn cảm giác lơ lửng.
 ancientOak.position.y -= 0.72;
 const rocks = createRocks(random, rockColliders, {
-  modelLoader: startupModelLoader,
+  modelLoader: backgroundModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/mossy-faceted-boulder.glb",
   castShadow: false,
   worldHalfExtent: GAME_HALF_WORLD,
