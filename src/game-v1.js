@@ -5,6 +5,8 @@ import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { createInPlaceClip } from "./animation-utils.js";
 import { createDeferredAssetLoader } from "./deferred-asset-loader.js";
 import { createBackgroundModelLoader } from "./background-model-loader.js";
+import { createStartupProgressLoader, advanceLoadingEstimate } from "./startup-loading-progress.js";
+import modelByteSizes from "virtual:model-sizes";
 import { createProceduralGrassField } from "./grass-field.js";
 import {
   createButterflyField,
@@ -348,13 +350,21 @@ updateSoundControls();
 
 const loadingManager = new THREE.LoadingManager();
 // Startup waits for the lightweight player and detailed trees.
-const startupModelLoader = new GLTFLoader(loadingManager);
+const startupModelLoader = createStartupProgressLoader(
+  new GLTFLoader(loadingManager), modelByteSizes, updateLoadingProgress,
+);
 // Other scene details load during play.
 const backgroundModelLoader = createBackgroundModelLoader(
   new GLTFLoader(new THREE.LoadingManager()),
 );
 const failedAssets = new Set();
 const loadingStartedAt = performance.now();
+let displayedLoadingProgress = 0;
+let targetLoadingProgress = 0;
+let lastLoadingFrame = loadingStartedAt;
+let loadingPhase = "download";
+let downloadedModelBytes = 0;
+let loadingModelName = "tài nguyên vòng 1";
 let assetsReady = false;
 let resolveModelAssets;
 const modelAssetsReady = new Promise((resolve) => {
@@ -362,28 +372,49 @@ const modelAssetsReady = new Promise((resolve) => {
 });
 
 function formatAssetName(url) {
+  const labels = {
+    "/models/stylized-layered-evergreen-tree.glb": "cây rừng",
+    "/models/majestic-ancient-oak.glb": "cây cổ thụ",
+    "/models/futuristic-robot-animated-mobile.glb": "nhân vật",
+  };
+  if (labels[url]) return labels[url];
   const filename = decodeURIComponent(url.split("/").pop() || url);
   return filename.replace(/\.(glb|gltf)$/i, "").replace(/[-+_]+/g, " ");
 }
 
-function updateLoadingProgress(url, itemsLoaded, itemsTotal) {
-  const progress = itemsTotal > 0 ? Math.round((itemsLoaded / itemsTotal) * 100) : 0;
-  loadingPercent.textContent = `${progress}%`;
-  loadingBar.style.width = `${progress}%`;
-  loadingProgress.setAttribute("aria-valuenow", String(progress));
-  if (url) loadingStatus.textContent = `Đang tải ${formatAssetName(url)}…`;
+function updateLoadingProgress({ progress, processing, downloadedBytes, url }) {
+  targetLoadingProgress = Math.max(targetLoadingProgress, progress);
+  downloadedModelBytes = downloadedBytes;
+  loadingModelName = formatAssetName(url);
+  loadingPhase = processing ? "processing" : "download";
 }
 
-loadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
-  updateLoadingProgress(url, itemsLoaded, itemsTotal);
-};
-loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-  updateLoadingProgress(url, itemsLoaded, itemsTotal);
-};
+function animateLoadingProgress(now) {
+  if (assetsReady) return;
+  displayedLoadingProgress = advanceLoadingEstimate(
+    displayedLoadingProgress, targetLoadingProgress, (now - lastLoadingFrame) / 1000,
+  );
+  lastLoadingFrame = now;
+  const progress = displayedLoadingProgress.toFixed(1);
+  const label = displayedLoadingProgress >= 98.95 ? "…" : `${progress}%`;
+  if (loadingPercent.textContent !== label) loadingPercent.textContent = label;
+  loadingBar.style.width = `${progress}%`;
+  loadingProgress.setAttribute("aria-valuenow", progress);
+  loadingProgress.setAttribute("aria-valuetext", `Tiến trình ước tính ${progress}%`);
+  const status = loadingPhase === "processing"
+    ? "Đang chuẩn bị khu rừng và nhân vật…"
+    : `Đang tải ${loadingModelName} · Đã nhận tổng ${(downloadedModelBytes / 1024 ** 2).toFixed(1)} MiB`;
+  if (loadingStatus.textContent !== status) loadingStatus.textContent = status;
+  requestAnimationFrame(animateLoadingProgress);
+}
+requestAnimationFrame(animateLoadingProgress);
+
 loadingManager.onError = (url) => {
   failedAssets.add(url);
 };
 loadingManager.onLoad = () => {
+  loadingPhase = "processing";
+  targetLoadingProgress = Math.max(targetLoadingProgress, 98);
   resolveModelAssets();
 };
 
@@ -427,6 +458,8 @@ Promise.all([modelAssetsReady, rendererReady]).then(() => {
     loadingPercent.textContent = "100%";
     loadingBar.style.width = "100%";
     loadingProgress.setAttribute("aria-valuenow", "100");
+    loadingProgress.setAttribute("aria-valuetext", "Tài nguyên vòng 1 đã sẵn sàng");
+    loadingScreen.classList.add("is-ready");
     loadingStatus.textContent = failedAssets.size
       ? `Sẵn sàng với ${failedAssets.size} tài nguyên fallback`
       : "Tài nguyên vòng 1 đã sẵn sàng";

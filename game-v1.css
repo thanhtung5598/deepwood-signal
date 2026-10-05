@@ -198,6 +198,9 @@ canvas {
 
 .loading-screen__meta strong {
   flex: 0 0 auto;
+  min-width: 72px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
   font-family: "Barlow Condensed", sans-serif;
   font-size: 24px;
@@ -205,9 +208,25 @@ canvas {
 }
 
 .loading-screen__track {
+  position: relative;
   height: 4px;
   overflow: hidden;
   background: rgb(255 255 255 / 10%);
+}
+
+.loading-screen__track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 65%), transparent);
+  animation: loading-sweep 1.4s linear infinite;
+}
+
+.loading-screen.is-ready .loading-screen__track::after { animation: none; opacity: 0; }
+
+@keyframes loading-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 .loading-screen__track i {
