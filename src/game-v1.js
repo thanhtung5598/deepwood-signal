@@ -486,9 +486,6 @@ Promise.all([modelAssetsReady, rendererReady]).then(() => {
       loadingScreen.classList.add("is-complete");
       beginMissionBriefing();
       // Preload the remaining assets while the player is still on the intro.
-      void loadForestGuardian().catch((error) => {
-        console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
-      });
       void backgroundModelLoader.start().catch((error) => {
         console.warn("Chưa tải được toàn bộ chi tiết khu rừng", error);
       });
@@ -1139,7 +1136,7 @@ if (!useCompatibilityRenderer) {
 }
 
 const loadForestGuardian = createDeferredAssetLoader(async () => {
-  // A separate manager keeps background work out of the startup progress/gate.
+  // Load on transformation, outside the startup progress/gate.
   const loader = new GLTFLoader(new THREE.LoadingManager());
   const gltf = await loader.loadAsync(forestGuardianModelUrl);
   const model = gltf.scene;
@@ -1673,10 +1670,6 @@ function restoreVictoryVisuals() {
 
 function beginVictoryTransformation() {
   if (gameState !== "playing" || currentRound !== 1) return;
-  if (!player.transformedModel) {
-    waitForRoundTwo();
-    return;
-  }
   gameState = "transforming";
   playGameSound("transformer", { volume: 0.82 });
   pressedKeys.clear();
@@ -1705,20 +1698,22 @@ function beginVictoryTransformation() {
     swapped: false,
     bones,
     materials: collectVictoryMaterials(player.model),
+    guardianLoad: loadForestGuardian(),
   };
+  // Surface any failure at the model swap, with the existing retry control.
+  void victoryTransformation.guardianLoad.catch(() => {});
   victoryTransformationFx.visible = true;
   missionText.textContent = "Năng lượng đang cộng hưởng";
   showToast("Lõi năng lượng thức tỉnh — bắt đầu biến hình!");
 }
 
-async function waitForRoundTwo() {
+async function waitForRoundTwo(guardianLoad = loadForestGuardian()) {
   gameState = "loading-round-two";
   pressedKeys.clear();
   resetTouchInput();
   mouseDragging = false;
   player.velocity.set(0, 0, 0);
   player.targetVelocity.set(0, 0, 0);
-  playAnimation("idle");
   document.exitPointerLock?.();
   roundLoading.hidden = false;
   roundLoading.classList.remove("is-error");
@@ -1727,11 +1722,10 @@ async function waitForRoundTwo() {
   roundLoadingRetry.disabled = true;
 
   try {
-    await loadForestGuardian();
+    await guardianLoad;
     if (gameState !== "loading-round-two") return;
     roundLoading.hidden = true;
-    gameState = "playing";
-    beginVictoryTransformation();
+    gameState = "transforming";
   } catch (error) {
     if (gameState !== "loading-round-two") return;
     console.error("Không tải được Forest Guardian Mecha", error);
@@ -1829,7 +1823,14 @@ function updateVictoryTransformation(deltaTime) {
   particles.position.y = -0.18 + Math.sin(time * 5) * 0.08;
   light.intensity = fxStrength * 5.5;
 
-  if (time >= VICTORY_SWAP_TIME) swapToTransformedRobot();
+  if (time >= VICTORY_SWAP_TIME) {
+    if (!player.transformedModel) {
+      victoryTransformation.time = VICTORY_SWAP_TIME;
+      void waitForRoundTwo(victoryTransformation.guardianLoad);
+      return;
+    }
+    swapToTransformedRobot();
+  }
   if (victoryTransformation.swapped && player.transformedModel) {
     const reveal = smoothProgress(time, VICTORY_SWAP_TIME, VICTORY_SWAP_TIME + 0.58);
     player.transformedModel.scale
