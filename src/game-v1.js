@@ -372,7 +372,7 @@ const backgroundModelLoader = createBackgroundModelLoader(
     "/models/bountiful-red-berry-bush.glb",
     "/models/majestic-ancient-oak.glb",
   ],
-  2,
+  1,
 );
 const failedAssets = new Set();
 const loadingStartedAt = performance.now();
