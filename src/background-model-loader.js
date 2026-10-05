@@ -1,25 +1,35 @@
-// Keep optional scene models off the startup path and load them one at a time.
-export function createBackgroundModelLoader(loader, loadOrder = []) {
+// Keep optional models off the startup path and limit concurrent downloads.
+export function createBackgroundModelLoader(loader, loadOrder = [], concurrency = 1) {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new RangeError("Model download concurrency must be a positive integer");
+  }
   const queue = [];
   const priorities = new Map(loadOrder.map((url, index) => [url, index]));
   let started = false;
   let active;
 
+  async function runWorker() {
+    while (queue.length) {
+      const { url, onLoad, onProgress, onError } = queue.shift();
+      try {
+        const model = await loader.loadAsync(url, onProgress);
+        await onLoad?.(model);
+      } catch (error) {
+        onError?.(error);
+      }
+      // Give rendering/input a turn between model installations.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
   function drain() {
     if (active) return active;
-    active = Promise.resolve().then(async () => {
-      while (queue.length) {
-        const { url, onLoad, onProgress, onError } = queue.shift();
-        try {
-          const model = await loader.loadAsync(url, onProgress);
-          await onLoad?.(model);
-        } catch (error) {
-          onError?.(error);
-        }
-        // Give rendering/input a turn between model installations.
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
-    }).finally(() => { active = undefined; });
+    active = Promise.resolve().then(() => Promise.all(
+      Array.from({ length: Math.min(concurrency, queue.length) }, runWorker),
+    )).finally(() => {
+      active = undefined;
+      if (queue.length) void drain();
+    });
     return active;
   }
 

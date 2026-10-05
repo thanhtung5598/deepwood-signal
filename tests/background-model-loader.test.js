@@ -2,6 +2,44 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createBackgroundModelLoader } from "../src/background-model-loader.js";
 
+test("two parallel downloads preserve priority and refill a free slot", async () => {
+  const requested = [];
+  const releases = new Map();
+  let active = 0;
+  let peak = 0;
+  let robotStarted;
+  const nextRequest = new Promise((resolve) => { robotStarted = resolve; });
+  const loader = createBackgroundModelLoader({
+    async loadAsync(url) {
+      requested.push(url);
+      active++;
+      peak = Math.max(peak, active);
+      if (url === "robot") robotStarted();
+      try {
+        if (url === "bird" || url === "rocks") {
+          await new Promise((resolve) => releases.set(url, resolve));
+        }
+        return url;
+      } finally {
+        active--;
+      }
+    },
+  }, ["bird", "rocks", "robot", "logs"], 2);
+  for (const url of ["logs", "rocks", "robot", "bird"]) loader.load(url);
+  const completion = loader.start();
+  assert.equal(loader.start(), completion);
+  await Promise.resolve();
+  assert.deepEqual(requested, ["bird", "rocks"]);
+  assert.equal(active, 2);
+  releases.get("rocks")();
+  await nextRequest;
+  assert.deepEqual(requested, ["bird", "rocks", "robot"]);
+  releases.get("bird")();
+  await completion;
+  assert.deepEqual(requested, ["bird", "rocks", "robot", "logs"]);
+  assert.equal(peak, 2);
+});
+
 test("configured priorities override registration order and keep unlisted assets last", async () => {
   const requested = [];
   const loader = createBackgroundModelLoader({
@@ -61,7 +99,7 @@ test("failed scene details keep their fallback and do not block later models", a
       if (url === "trees") throw new Error("connection interrupted");
       return url;
     },
-  });
+  }, [], 2);
   loader.load("trees", (model) => installed.push(model), undefined, (error) => errors.push(error));
   loader.load("rocks", (model) => installed.push(model));
   await loader.start();
