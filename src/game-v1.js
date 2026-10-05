@@ -132,6 +132,8 @@ const startModal = document.querySelector("#start-modal");
 const resultModal = document.querySelector("#result-modal");
 const startButton = document.querySelector("#start-button");
 const restartButton = document.querySelector("#restart-button");
+const pauseMenu = document.querySelector("#pause-menu");
+const resumeButton = document.querySelector("#resume-button");
 const roundLabel = document.querySelector("#round-label");
 const missionText = document.querySelector("#mission-text");
 const timerElement = document.querySelector("#timer");
@@ -264,7 +266,7 @@ function updateSoundControls() {
     soundMuted ? "Bật âm thanh" : "Tắt âm thanh",
   );
   soundIcon.textContent = soundMuted ? "×" : "♪";
-  soundToggleLabel.textContent = soundMuted ? "Sound off" : "Sound on";
+  soundToggleLabel.textContent = soundMuted ? "Tắt" : "Bật";
   forestAmbience.volume = soundMuted ? 0 : soundVolume * 0.42;
 }
 
@@ -1410,6 +1412,7 @@ let pitch = 0.12;
 let thirdPersonDistance = THIRD_PERSON_DISTANCE;
 let targetThirdPersonDistance = THIRD_PERSON_DISTANCE;
 let mouseDragging = false;
+let wasPointerLocked = false;
 let joystickPointerId = null;
 let lookPointerId = null;
 let lookPointerX = 0;
@@ -1687,7 +1690,36 @@ function usesTouchControls() {
 }
 
 function requestGamePointerLock() {
-  if (!usesTouchControls()) canvas.requestPointerLock?.();
+  if (!usesTouchControls() && !pauseMenu.open) {
+    canvas.requestPointerLock?.()?.catch?.(() => {
+      // Sau khi thoát bằng Esc, trình duyệt có thể yêu cầu click lại canvas.
+    });
+  }
+}
+
+function openPauseMenu() {
+  if (pauseMenu.open) return;
+  pressedKeys.clear();
+  resetTouchInput();
+  mouseDragging = false;
+  setMobileSettingsOpen(false);
+  resumeButton.textContent =
+    gameState === "playing" || gameState === "transforming"
+      ? "Tiếp tục chơi"
+      : "Đóng menu";
+  pauseMenu.showModal();
+  if (document.pointerLockElement === canvas) document.exitPointerLock?.();
+  for (const pool of soundPools.values()) {
+    for (const voice of pool) voice.pause();
+  }
+}
+
+function closePauseMenu(restorePointerLock = false) {
+  if (!pauseMenu.open) return;
+  pauseMenu.close();
+  pressedKeys.clear();
+  resetTouchInput();
+  if (restorePointerLock && gameState === "playing") requestGamePointerLock();
 }
 
 function resetTouchInput() {
@@ -2580,21 +2612,21 @@ function updateMinimap(deltaTime, force = false) {
 }
 
 function onKeyDown(event) {
+  if (event.code === "Escape") {
+    event.preventDefault();
+    if (event.repeat) return;
+    if (pauseMenu.open) closePauseMenu();
+    else openPauseMenu();
+    return;
+  }
+  if (pauseMenu.open) return;
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
-  if (event.code === "KeyM" && !event.repeat) {
-    setSoundMuted(!soundMuted);
-    return;
-  }
-  if (event.code === "KeyT" && !event.repeat) {
-    cycleWeather();
-    return;
-  }
   if (event.code === "KeyV" && !event.repeat && gameState === "playing") toggleCameraMode();
   if (gameState === "playing") pressedKeys.add(event.code);
 }
 
 function onMouseMove(event) {
-  if (gameState !== "playing") return;
+  if (gameState !== "playing" || pauseMenu.open) return;
   const pointerLocked = document.pointerLockElement === canvas;
   if (!pointerLocked && !mouseDragging) return;
   yaw -= event.movementX * 0.0025;
@@ -2611,7 +2643,7 @@ function onMouseMove(event) {
 }
 
 function onMouseWheel(event) {
-  if (gameState !== "playing" || cameraMode !== "third") return;
+  if (gameState !== "playing" || pauseMenu.open || cameraMode !== "third") return;
   event.preventDefault();
   const deltaPixels = event.deltaMode === WheelEvent.DOM_DELTA_LINE
     ? event.deltaY * 16
@@ -2826,6 +2858,18 @@ async function toggleMobileFullscreen() {
 }
 
 window.addEventListener("keydown", onKeyDown);
+pauseMenu.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closePauseMenu();
+});
+resumeButton.addEventListener("click", () => closePauseMenu(true));
+document.addEventListener("pointerlockchange", () => {
+  const isLocked = document.pointerLockElement === canvas;
+  if (wasPointerLocked && !isLocked && gameState === "playing" && !pauseMenu.open) {
+    openPauseMenu();
+  }
+  wasPointerLocked = isLocked;
+});
 window.addEventListener("keyup", (event) => pressedKeys.delete(event.code));
 window.addEventListener("blur", () => {
   pressedKeys.clear();
@@ -2845,7 +2889,7 @@ canvas.addEventListener("click", () => {
     gameState === "playing" &&
     document.pointerLockElement !== canvas
   ) {
-    canvas.requestPointerLock?.();
+    requestGamePointerLock();
   }
 });
 mobileJoystick.addEventListener("pointerdown", onJoystickPointerDown, {
@@ -2968,6 +3012,12 @@ camera.position.set(
 const clock = new THREE.Clock();
 function gameLoop() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
+  if (pauseMenu.open) {
+    updateAtmosphere();
+    renderer.render(scene, camera);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
   elapsedTime += deltaTime;
 
   if (gameState === "playing") {

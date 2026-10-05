@@ -317,42 +317,67 @@ canvas {
 
 .timer.is-urgent { border-color: var(--danger); color: #ffd5d1; }
 
-.quick-settings {
-  position: absolute;
-  z-index: 4;
-  top: 22px;
-  right: 172px;
-  display: flex;
-  gap: 7px;
-}
-
-.quick-settings button {
-  display: grid;
-  min-width: 67px;
-  height: 51px;
-  padding: 6px 9px 5px;
-  place-items: center;
+.pause-menu {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 32px;
+  overflow: auto;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background: #0d1b14;
   color: var(--ink);
-  cursor: pointer;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 48%);
 }
 
-.quick-settings button:hover,
-.quick-settings button:focus-visible {
+.pause-menu::backdrop {
+  background: rgb(3 10 7 / 72%);
+  backdrop-filter: blur(8px);
+}
+
+.pause-menu h2 {
+  margin: 0;
+  font: 700 48px/.95 "Barlow Condensed", sans-serif;
+  text-transform: uppercase;
+}
+
+.pause-menu > p {
+  margin: 16px 0 24px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pause-menu__settings { display: grid; gap: 10px; margin-bottom: 24px; }
+
+.pause-menu__settings button {
+  display: grid;
+  grid-template-columns: 28px 1fr 20px;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 3%);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pause-menu__settings button:hover,
+.pause-menu__settings button:focus-visible {
   border-color: rgb(215 255 103 / 55%);
   color: var(--acid);
 }
 
-.quick-settings button[aria-pressed="false"] { color: #78827b; }
-.quick-settings span { font-size: 17px; line-height: 1; }
-.quick-settings small {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 8px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
+.pause-menu__settings button > span:first-child { color: var(--acid); font-size: 22px; }
+.pause-menu__settings button[aria-pressed="false"] > span:first-child { color: var(--muted); }
+.pause-menu__setting-label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
+.pause-menu__setting-label small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.pause-menu__action { color: var(--muted); font-size: 19px; }
+.pause-menu .primary-button { width: 100%; justify-content: center; }
+.pause-menu__hint { margin-top: 16px; color: var(--muted); font-size: 10px; text-align: center; }
+.pause-menu__hint kbd { margin-right: 5px; color: var(--ink); }
+.pause-menu button:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
 
 .status-panel {
   position: absolute;
@@ -561,16 +586,6 @@ kbd {
 .primary-button:disabled { cursor: wait; filter: grayscale(.8); opacity: .55; }
 .primary-button span { font-size: 18px; line-height: 1; }
 
-.back-link {
-  margin-left: 18px;
-  color: #98a39b;
-  font-size: 10px;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.back-link:hover { color: var(--ink); }
-
 .result-modal { left: 50%; width: min(470px, calc(100% - 56px)); text-align: center; transform: translate(-50%, calc(-50% + 12px)); }
 .result-modal.is-visible { transform: translate(-50%, -50%); }
 .result-icon { display: grid; width: 52px; height: 52px; margin: 0 auto 17px; place-items: center; border: 1px solid var(--acid); color: var(--acid); font-size: 23px; transform: rotate(45deg); }
@@ -660,7 +675,6 @@ kbd {
   .briefing { grid-template-columns: 1fr; }
   .briefing span { min-height: 0; padding: 10px 0; }
   .briefing span + span { padding-left: 0; border-top: 1px solid var(--line); border-left: 0; }
-  .back-link { display: block; margin: 16px 0 0; }
   .result-modal { left: 50%; }
 }
 
@@ -721,8 +735,7 @@ kbd {
 
   .brand,
   .controls,
-  .camera-mode,
-  .quick-settings {
+  .camera-mode {
     display: none;
   }
 
@@ -1048,7 +1061,6 @@ kbd {
   .briefing span { min-height: 55px; padding: 8px 8px 8px 0; font-size: 8px; }
   .briefing span + span { padding-left: 8px; border-top: 0; border-left: 1px solid var(--line); }
   .primary-button { min-width: 190px; padding: 10px 13px; }
-  .back-link { display: inline; margin: 0 0 0 13px; }
   .result-modal { left: 50%; width: min(450px, calc(100% - 170px)); }
 }
 

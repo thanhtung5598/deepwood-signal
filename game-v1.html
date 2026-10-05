@@ -27,14 +27,25 @@
       property="og:description"
       content="Thu thập lõi năng lượng, sống sót trong rừng và tiến hóa thành Forest Guardian Mecha."
     />
-    <meta property="og:image" content="/icons/deepwood-signal-512.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="/og/deepwood-signal.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1731" />
+    <meta property="og:image:height" content="909" />
+    <meta
+      property="og:image:alt"
+      content="Deepwood Signal — Forest Guardian Mecha với lõi năng lượng phát sáng giữa khu rừng."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Deepwood Signal | Forest Guardian 3D" />
     <meta
       name="twitter:description"
       content="Game sinh tồn 3D trong khu rừng Deepwood Signal."
     />
-    <meta name="twitter:image" content="/icons/deepwood-signal-512.png" />
+    <meta name="twitter:image" content="/og/deepwood-signal.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Deepwood Signal — Forest Guardian Mecha với lõi năng lượng phát sáng giữa khu rừng."
+    />
     <link rel="icon" href="/icons/deepwood-signal.svg" type="image/svg+xml" />
     <link rel="icon" href="/icons/deepwood-favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/deepwood-apple-touch-icon.png" sizes="180x180" />
@@ -104,16 +115,25 @@
         </div>
       </header>
 
-      <section class="quick-settings" aria-label="Cài đặt nhanh">
-        <button id="weather-cycle" type="button" aria-label="Đổi thời tiết, hiện tại Sunny">
-          <span id="weather-icon" aria-hidden="true">☀</span>
-          <small id="weather-label">Sunny</small>
-        </button>
-        <button id="sound-toggle" type="button" aria-label="Tắt âm thanh" aria-pressed="true">
-          <span id="sound-icon" aria-hidden="true">♪</span>
-          <small id="sound-toggle-label">Sound on</small>
-        </button>
-      </section>
+      <dialog class="pause-menu" id="pause-menu" aria-labelledby="pause-menu-title">
+        <div class="modal__eyebrow">Deepwood Signal · Menu</div>
+        <h2 id="pause-menu-title">Cài đặt</h2>
+        <p>Điều chỉnh khu rừng trước khi tiếp tục nhiệm vụ.</p>
+        <div class="pause-menu__settings">
+          <button id="weather-cycle" type="button" aria-label="Đổi thời tiết, hiện tại Sunny">
+            <span id="weather-icon" aria-hidden="true">☀</span>
+            <span class="pause-menu__setting-label">Thời tiết<small id="weather-label">Sunny</small></span>
+            <span class="pause-menu__action" aria-hidden="true">↻</span>
+          </button>
+          <button id="sound-toggle" type="button" aria-label="Tắt âm thanh" aria-pressed="true">
+            <span id="sound-icon" aria-hidden="true">♪</span>
+            <span class="pause-menu__setting-label">Âm thanh<small id="sound-toggle-label">Bật</small></span>
+            <span class="pause-menu__action" aria-hidden="true">↔</span>
+          </button>
+        </div>
+        <button class="primary-button" id="resume-button" type="button" autofocus>Tiếp tục chơi</button>
+        <div class="pause-menu__hint"><kbd>Esc</kbd> Đóng menu</div>
+      </dialog>
 
       <section class="status-panel" aria-label="Trạng thái sinh tồn">
         <div class="status-row">
@@ -141,8 +161,7 @@
         <span><kbd>Mouse</kbd> Camera 360°</span>
         <span><kbd>Scroll</kbd> Zoom</span>
         <span><kbd>V</kbd> Đổi camera</span>
-        <span><kbd>M</kbd> Âm thanh</span>
-        <span><kbd>T</kbd> Thời tiết</span>
+        <span><kbd>Esc</kbd> Menu</span>
       </section>
 
       <div class="camera-mode" id="camera-mode">THIRD PERSON</div>
@@ -249,7 +268,6 @@
         <button class="primary-button" id="start-button" type="button" disabled>
           Bắt đầu nhiệm vụ <span>→</span>
         </button>
-        <a class="back-link" href="/">← Xem lại bài 11</a>
       </section>
 
       <section class="modal result-modal" id="result-modal" aria-live="assertive">
