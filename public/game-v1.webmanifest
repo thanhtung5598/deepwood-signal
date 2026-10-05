@@ -4,7 +4,7 @@
   "short_name": "Deepwood",
   "description": "Game sinh tồn 3D: thu thập lõi năng lượng và tiến hóa thành Forest Guardian Mecha.",
   "lang": "vi",
-  "start_url": "/game-v1.html",
+  "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],

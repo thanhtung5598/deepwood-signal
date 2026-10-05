@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/index.html", "destination": "/", "permanent": true },
+    { "source": "/index", "destination": "/", "permanent": true },
+    { "source": "/game-v1.html", "destination": "/", "permanent": true },
+    { "source": "/game-v1", "destination": "/", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/game-v1.html" }
+  ]
+}

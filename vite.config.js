@@ -15,7 +15,6 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        lessons: resolve(import.meta.dirname, "index.html"),
         game: resolve(import.meta.dirname, "game-v1.html"),
       },
     },
