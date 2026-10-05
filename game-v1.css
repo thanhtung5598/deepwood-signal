@@ -379,6 +379,39 @@ canvas {
 .pause-menu__hint kbd { margin-right: 5px; color: var(--ink); }
 .pause-menu button:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
 
+.round-loading {
+  position: absolute;
+  z-index: 18;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(3 10 7 / 76%);
+  backdrop-filter: blur(8px);
+}
+
+.round-loading[hidden],
+#round-loading-retry[hidden] { display: none; }
+.round-loading__panel { width: min(420px, 100%); text-align: center; }
+.round-loading h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 700 44px/1 "Barlow Condensed", sans-serif;
+  text-transform: uppercase;
+}
+.round-loading p { margin: 20px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.round-loading__spinner {
+  width: 30px;
+  height: 30px;
+  margin: 28px auto;
+  border: 2px solid var(--line);
+  border-top-color: var(--acid);
+  border-radius: 50%;
+  animation: round-loading-spin 1s linear infinite;
+}
+.round-loading.is-error .round-loading__spinner { display: none; }
+@keyframes round-loading-spin { to { transform: rotate(360deg); } }
+
 .status-panel {
   position: absolute;
   z-index: 3;

@@ -270,6 +270,16 @@
         </button>
       </section>
 
+      <section class="round-loading" id="round-loading" hidden aria-labelledby="round-loading-title">
+        <div class="round-loading__panel">
+          <div class="modal__eyebrow">Vòng 1 hoàn tất</div>
+          <h2 id="round-loading-title">Chuẩn bị vòng 2</h2>
+          <div class="round-loading__spinner" aria-hidden="true"></div>
+          <p id="round-loading-status" role="status" aria-live="polite">Đang chuẩn bị Forest Guardian…</p>
+          <button class="primary-button" id="round-loading-retry" type="button" hidden>Thử tải lại</button>
+        </div>
+      </section>
+
       <section class="modal result-modal" id="result-modal" aria-live="assertive">
         <div class="result-icon" id="result-icon">✓</div>
         <div class="modal__eyebrow" id="result-eyebrow">Mission complete</div>

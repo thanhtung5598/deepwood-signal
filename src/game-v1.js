@@ -3,6 +3,7 @@ import { WebGPURenderer } from "three/webgpu";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { createInPlaceClip } from "./animation-utils.js";
+import { createDeferredAssetLoader } from "./deferred-asset-loader.js";
 import { createProceduralGrassField } from "./grass-field.js";
 import {
   createButterflyField,
@@ -134,6 +135,9 @@ const startButton = document.querySelector("#start-button");
 const restartButton = document.querySelector("#restart-button");
 const pauseMenu = document.querySelector("#pause-menu");
 const resumeButton = document.querySelector("#resume-button");
+const roundLoading = document.querySelector("#round-loading");
+const roundLoadingStatus = document.querySelector("#round-loading-status");
+const roundLoadingRetry = document.querySelector("#round-loading-retry");
 const roundLabel = document.querySelector("#round-label");
 const missionText = document.querySelector("#mission-text");
 const timerElement = document.querySelector("#timer");
@@ -343,6 +347,7 @@ function updateMovementSounds(deltaTime, running) {
 updateSoundControls();
 
 const loadingManager = THREE.DefaultLoadingManager;
+// Only round-one assets use this manager. Forest Guardian has its own loader.
 const failedAssets = new Set();
 const loadingStartedAt = performance.now();
 let assetsReady = false;
@@ -420,7 +425,7 @@ Promise.all([modelAssetsReady, fontsReady, rendererReady]).then(() => {
     loadingProgress.setAttribute("aria-valuenow", "100");
     loadingStatus.textContent = failedAssets.size
       ? `Sẵn sàng với ${failedAssets.size} tài nguyên fallback`
-      : "Tất cả tài nguyên đã sẵn sàng";
+      : "Tài nguyên vòng 1 đã sẵn sàng";
     startButton.disabled = false;
     startModal.classList.add("is-visible");
     window.setTimeout(() => loadingScreen.classList.add("is-complete"), 180);
@@ -988,56 +993,58 @@ new GLTFLoader().load(
   (error) => console.error("Không tải được nhân vật v1", error),
 );
 
-new GLTFLoader().load(
-  forestGuardianModelUrl,
-  (gltf) => {
-    const model = gltf.scene;
-    model.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(model);
-    const sourceHeight = bounds.getSize(new THREE.Vector3()).y;
-    model.scale.setScalar(
-      sourceHeight > 0 ? FOREST_GUARDIAN_TARGET_HEIGHT / sourceHeight : 1,
+const loadForestGuardian = createDeferredAssetLoader(async () => {
+  // A separate manager keeps background work out of the startup progress/gate.
+  const loader = new GLTFLoader(new THREE.LoadingManager());
+  const gltf = await loader.loadAsync(forestGuardianModelUrl);
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  const sourceHeight = bounds.getSize(new THREE.Vector3()).y;
+  model.scale.setScalar(
+    sourceHeight > 0 ? FOREST_GUARDIAN_TARGET_HEIGHT / sourceHeight : 1,
+  );
+  model.updateMatrixWorld(true);
+  bounds.setFromObject(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  model.position.set(-center.x, -bounds.min.y, -center.z);
+  model.traverse((object) => {
+    if (!object.isMesh) return;
+    object.castShadow = true;
+    object.receiveShadow = true;
+  });
+  model.visible = false;
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = new Map();
+  const rootPosition = model.getObjectByName(
+    FOREST_GUARDIAN_ROOT_BONE,
+  )?.position;
+  for (const [state, clipName] of Object.entries(
+    FOREST_GUARDIAN_ANIMATIONS,
+  )) {
+    const sourceClip = gltf.animations.find((clip) => clip.name === clipName);
+    if (!sourceClip) continue;
+    const playableClip = rootPosition
+      ? createInPlaceClip(
+          sourceClip,
+          FOREST_GUARDIAN_ROOT_BONE,
+          rootPosition,
+          state === "jump",
+        )
+      : sourceClip;
+    actions.set(
+      state,
+      mixer.clipAction(playableClip),
     );
-    model.updateMatrixWorld(true);
-    bounds.setFromObject(model);
-    const center = bounds.getCenter(new THREE.Vector3());
-    model.position.set(-center.x, -bounds.min.y, -center.z);
-    model.traverse((object) => {
-      if (!object.isMesh) return;
-      object.castShadow = true;
-      object.receiveShadow = true;
-    });
-    model.visible = false;
-    playerRoot.add(model);
-    player.transformedModel = model;
-    player.transformedBasePosition.copy(model.position);
-    player.transformedBaseScale.copy(model.scale);
-    player.transformedMixer = new THREE.AnimationMixer(model);
-    const rootPosition = model.getObjectByName(
-      FOREST_GUARDIAN_ROOT_BONE,
-    )?.position;
-    for (const [state, clipName] of Object.entries(
-      FOREST_GUARDIAN_ANIMATIONS,
-    )) {
-      const sourceClip = gltf.animations.find((clip) => clip.name === clipName);
-      if (!sourceClip) continue;
-      const playableClip = rootPosition
-        ? createInPlaceClip(
-            sourceClip,
-            FOREST_GUARDIAN_ROOT_BONE,
-            rootPosition,
-            state === "jump",
-          )
-        : sourceClip;
-      player.transformedActions.set(
-        state,
-        player.transformedMixer.clipAction(playableClip),
-      );
-    }
-  },
-  undefined,
-  (error) => console.error("Không tải được Forest Guardian Mecha", error),
-);
+  }
+  // Publish the model only after its animation setup has also succeeded.
+  playerRoot.add(model);
+  player.transformedBasePosition.copy(model.position);
+  player.transformedBaseScale.copy(model.scale);
+  player.transformedMixer = mixer;
+  player.transformedActions = actions;
+  player.transformedModel = model;
+});
 
 function createBeacon() {
   const group = new THREE.Group();
@@ -1521,6 +1528,10 @@ function restoreVictoryVisuals() {
 
 function beginVictoryTransformation() {
   if (gameState !== "playing" || currentRound !== 1) return;
+  if (!player.transformedModel) {
+    waitForRoundTwo();
+    return;
+  }
   gameState = "transforming";
   playGameSound("transformer", { volume: 0.82 });
   pressedKeys.clear();
@@ -1553,6 +1564,39 @@ function beginVictoryTransformation() {
   victoryTransformationFx.visible = true;
   missionText.textContent = "Năng lượng đang cộng hưởng";
   showToast("Lõi năng lượng thức tỉnh — bắt đầu biến hình!");
+}
+
+async function waitForRoundTwo() {
+  gameState = "loading-round-two";
+  pressedKeys.clear();
+  resetTouchInput();
+  mouseDragging = false;
+  player.velocity.set(0, 0, 0);
+  player.targetVelocity.set(0, 0, 0);
+  playAnimation("idle");
+  document.exitPointerLock?.();
+  roundLoading.hidden = false;
+  roundLoading.classList.remove("is-error");
+  roundLoadingStatus.textContent = "Đang chuẩn bị Forest Guardian…";
+  roundLoadingRetry.hidden = true;
+  roundLoadingRetry.disabled = true;
+
+  try {
+    await loadForestGuardian();
+    if (gameState !== "loading-round-two") return;
+    roundLoading.hidden = true;
+    gameState = "playing";
+    beginVictoryTransformation();
+  } catch (error) {
+    if (gameState !== "loading-round-two") return;
+    console.error("Không tải được Forest Guardian Mecha", error);
+    roundLoading.classList.add("is-error");
+    roundLoadingStatus.textContent =
+      "Chưa tải được Forest Guardian. Kiểm tra kết nối và thử lại.";
+    roundLoadingRetry.hidden = false;
+    roundLoadingRetry.disabled = false;
+    roundLoadingRetry.focus();
+  }
 }
 
 function swapToTransformedRobot() {
@@ -1787,6 +1831,7 @@ function beginRoundTwo() {
 }
 
 function resetGame() {
+  roundLoading.hidden = true;
   currentRound = 1;
   randomizeWeather();
   restoreVictoryVisuals();
@@ -1848,6 +1893,10 @@ function startGame() {
   resultModal.classList.remove("is-visible");
   requestGamePointerLock();
   showToast("Tìm các tín hiệu màu xanh trong rừng");
+  // Start the round-two download only after the user can play round one.
+  void loadForestGuardian().catch((error) => {
+    console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
+  });
 }
 
 function finishGame(won, reason = "") {
@@ -2967,6 +3016,9 @@ startButton.addEventListener("click", () => {
   startGame();
 });
 restartButton.addEventListener("click", startGame);
+roundLoadingRetry.addEventListener("click", () => {
+  if (gameState === "loading-round-two") void waitForRoundTwo();
+});
 
 function resize() {
   const width = window.innerWidth;
@@ -3012,7 +3064,7 @@ camera.position.set(
 const clock = new THREE.Clock();
 function gameLoop() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
-  if (pauseMenu.open) {
+  if (pauseMenu.open || gameState === "loading-round-two") {
     updateAtmosphere();
     renderer.render(scene, camera);
     requestAnimationFrame(gameLoop);
