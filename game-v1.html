@@ -268,13 +268,16 @@
           UFO beacon trước khi hoàng hôn nuốt lấy khu rừng. Đứng yên trong vòng sáng
           để tiến hóa, rồi tiếp tục vòng 2 bằng Forest Guardian.
         </p>
-        <div class="briefing">
-          <span><b>01</b> Tìm lõi phát sáng</span>
-          <span><b>02</b> Giữ khoảng cách với bóng săn</span>
-          <span><b>03</b> Đứng dưới UFO beacon để tiến hóa</span>
+        <div class="briefing-transmission" id="briefing-transmission" role="status" aria-live="polite" hidden>
+          <i aria-hidden="true"></i><span id="briefing-status">Đang nhận tín hiệu nhiệm vụ…</span>
+        </div>
+        <div class="briefing" id="mission-briefing">
+          <span><b>01</b> Thu thập 6 lõi năng lượng</span>
+          <span><b>02</b> Tránh những bóng săn</span>
+          <span><b>03</b> Trở về UFO để tiến hóa</span>
         </div>
         <button class="primary-button" id="start-button" type="button" disabled>
-          Bắt đầu nhiệm vụ <span>→</span>
+          <span id="start-button-label">Bắt đầu nhiệm vụ</span><span aria-hidden="true">→</span>
         </button>
       </section>
 

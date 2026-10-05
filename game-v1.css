@@ -615,6 +615,36 @@ kbd {
 .briefing span + span { padding-left: 12px; border-left: 1px solid var(--line); }
 .briefing b { color: var(--acid); font-family: "Barlow Condensed", sans-serif; letter-spacing: .12em; }
 
+.briefing-transmission {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--acid);
+  font-size: 10px;
+}
+.briefing-transmission[hidden] { display: none; }
+.briefing-transmission i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--acid);
+}
+.is-briefing .briefing-transmission i { animation: briefing-pulse 1s ease-in-out infinite; }
+.briefing > span { transition: opacity .4s ease, transform .4s ease, color .4s ease; }
+.is-briefing .briefing > span { opacity: .25; transform: translateY(5px); }
+.is-briefing .briefing > span.is-revealed { opacity: 1; transform: none; }
+.is-briefing .briefing > span.is-current { color: var(--ink); background: rgb(215 255 103 / 5%); }
+#start-button-label { font-size: inherit; line-height: inherit; }
+@keyframes briefing-pulse {
+  50% { opacity: .35; box-shadow: 0 0 10px rgb(215 255 103 / 60%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .briefing > span { transition: none; }
+  .is-briefing .briefing-transmission i { animation: none; }
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;

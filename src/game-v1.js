@@ -7,6 +7,7 @@ import { createDeferredAssetLoader } from "./deferred-asset-loader.js";
 import { createBackgroundModelLoader } from "./background-model-loader.js";
 import { createStartupProgressLoader, advanceLoadingEstimate } from "./startup-loading-progress.js";
 import modelByteSizes from "virtual:model-sizes";
+import { createMissionBriefing } from "./mission-briefing.js";
 import { createProceduralGrassField } from "./grass-field.js";
 import {
   createButterflyField,
@@ -135,6 +136,12 @@ const shell = document.querySelector("#game-shell");
 const startModal = document.querySelector("#start-modal");
 const resultModal = document.querySelector("#result-modal");
 const startButton = document.querySelector("#start-button");
+const startButtonLabel = document.querySelector("#start-button-label");
+const briefingTransmission = document.querySelector("#briefing-transmission");
+const briefingStatus = document.querySelector("#briefing-status");
+const briefingSteps = [...document.querySelectorAll("#mission-briefing > span")];
+const missionBriefing = createMissionBriefing(() => window.localStorage);
+const reduceIntroMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const restartButton = document.querySelector("#restart-button");
 const pauseMenu = document.querySelector("#pause-menu");
 const resumeButton = document.querySelector("#resume-button");
@@ -473,10 +480,11 @@ Promise.all([modelAssetsReady, rendererReady]).then(() => {
     loadingStatus.textContent = failedAssets.size
       ? `Sẵn sàng với ${failedAssets.size} tài nguyên fallback`
       : "Tài nguyên vòng 1 đã sẵn sàng";
-    startButton.disabled = false;
+    startButton.disabled = true;
     startModal.classList.add("is-visible");
     window.setTimeout(() => {
       loadingScreen.classList.add("is-complete");
+      beginMissionBriefing();
       // Preload the remaining assets while the player is still on the intro.
       void loadForestGuardian().catch((error) => {
         console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
@@ -1010,8 +1018,9 @@ function playAnimation(name) {
             ? 1.08
             : 1,
   );
-  nextAction.setLoop(name === "jump" ? THREE.LoopOnce : THREE.LoopRepeat, name === "jump" ? 1 : Infinity);
-  nextAction.clampWhenFinished = name === "jump";
+  const playOnce = name === "jump" || name === "wave";
+  nextAction.setLoop(playOnce ? THREE.LoopOnce : THREE.LoopRepeat, playOnce ? 1 : Infinity);
+  nextAction.clampWhenFinished = playOnce;
   nextAction.fadeIn(0.16).play();
   if (transformed) {
     player.transformedActiveAction?.fadeOut(0.16);
@@ -2022,8 +2031,37 @@ function resetGame() {
   updateHud();
 }
 
+function beginMissionBriefing() {
+  missionBriefing.begin();
+  startModal.classList.toggle("is-briefing", missionBriefing.firstVisit);
+  briefingTransmission.hidden = !missionBriefing.firstVisit;
+  if (missionBriefing.firstVisit && !reduceIntroMotion) playAnimation("wave");
+  updateMissionBriefing(0);
+}
+
+function updateMissionBriefing(deltaTime) {
+  const wasReady = missionBriefing.ready;
+  missionBriefing.advance(deltaTime);
+  const ready = missionBriefing.ready;
+  for (const [index, step] of briefingSteps.entries()) {
+    step.classList.toggle("is-revealed", index <= missionBriefing.step);
+    step.classList.toggle("is-current", !ready && index === missionBriefing.step);
+  }
+  const label = ready
+    ? "Bắt đầu nhiệm vụ"
+    : `Bắt đầu nhiệm vụ · ${missionBriefing.remainingSeconds}`;
+  if (startButtonLabel.textContent !== label) startButtonLabel.textContent = label;
+  startButton.disabled = !ready;
+  if (ready) {
+    startModal.classList.remove("is-briefing");
+    briefingStatus.textContent = "Tín hiệu đã rõ. Bạn đã sẵn sàng.";
+    if (!wasReady) playAnimation("idle");
+  }
+}
+
 function startGame() {
-  if (!assetsReady) return;
+  if (!assetsReady || !missionBriefing.ready) return;
+  missionBriefing.markSeen();
   resetGame();
   gameState = "playing";
   startForestAmbience();
@@ -2294,6 +2332,25 @@ function updatePlayer(deltaTime) {
 }
 
 function updateCamera(deltaTime) {
+  if (gameState === "intro" && missionBriefing.started && missionBriefing.firstVisit && !reduceIntroMotion) {
+    const progress = missionBriefing.progress;
+    const ease = progress * progress * (3 - 2 * progress);
+    const angle = 0.4 - ease * 0.65;
+    cameraTarget.set(
+      playerRoot.position.x - Math.cos(angle) * 0.75,
+      playerRoot.position.y + 1.25,
+      playerRoot.position.z + Math.sin(angle) * 0.75,
+    );
+    desiredCamera.set(
+      playerRoot.position.x + Math.sin(angle) * 4.7,
+      playerRoot.position.y + 2.05,
+      playerRoot.position.z + Math.cos(angle) * 4.7,
+    );
+    preventCameraOcclusion(cameraTarget, desiredCamera);
+    camera.position.lerp(desiredCamera, 1 - Math.exp(-3 * deltaTime));
+    camera.lookAt(cameraTarget);
+    return;
+  }
   if (cameraMode === "first") {
     const cosPitch = Math.cos(pitch);
     lookDirection.set(-Math.sin(yaw) * cosPitch, Math.sin(pitch), -Math.cos(yaw) * cosPitch);
@@ -3205,6 +3262,10 @@ function gameLoop() {
     return;
   }
   elapsedTime += deltaTime;
+
+  if (gameState === "intro" && missionBriefing.started && !missionBriefing.ready && !document.hidden) {
+    updateMissionBriefing(deltaTime);
+  }
 
   if (gameState === "playing") {
     timeRemaining = Math.max(0, timeRemaining - deltaTime);
