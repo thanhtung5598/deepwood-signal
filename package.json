@@ -1,0 +1,22 @@
+{
+  "name": "deepwood-signal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "assets:rabbit": "node scripts/create-rabbit.mjs",
+    "assets:rabbit:animate": "node scripts/create-rabbit-animations.mjs",
+    "assets:rabbit:inspect": "node scripts/inspect-glb.mjs public/models/rabbit-animated.glb",
+    "assets:humanoids:animate": "node scripts/create-humanoid-animations.mjs public/models/futuristic-robot-rigged.glb public/models/futuristic-robot-animated.glb",
+    "assets:robot:inspect": "node scripts/inspect-glb.mjs public/models/futuristic-robot-animated.glb"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
+  }
+}

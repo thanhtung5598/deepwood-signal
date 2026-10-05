@@ -1,0 +1,35 @@
+{
+  "id": "/game-v1.html",
+  "name": "Deepwood Signal — Forest Guardian",
+  "short_name": "Deepwood",
+  "description": "Game sinh tồn 3D: thu thập lõi năng lượng và tiến hóa thành Forest Guardian Mecha.",
+  "lang": "vi",
+  "start_url": "/game-v1.html",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#07100d",
+  "theme_color": "#07100d",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/icons/deepwood-signal-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/deepwood-signal-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/deepwood-signal-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

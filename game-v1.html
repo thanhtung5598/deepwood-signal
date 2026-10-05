@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Deepwood Signal" />
+    <meta name="application-name" content="Deepwood Signal" />
+    <meta name="theme-color" content="#07100d" />
+    <meta
+      name="keywords"
+      content="Deepwood Signal, game sinh tồn 3D, game robot, Forest Guardian Mecha, game WebGL, game mobile"
+    />
+    <meta
+      name="description"
+      content="Chơi Deepwood Signal, game sinh tồn 3D nơi bạn thu thập lõi năng lượng, né bóng săn và tiến hóa thành Forest Guardian Mecha trong khu rừng."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:title" content="Deepwood Signal | Game sinh tồn Forest Guardian 3D" />
+    <meta
+      property="og:description"
+      content="Thu thập lõi năng lượng, sống sót trong rừng và tiến hóa thành Forest Guardian Mecha."
+    />
+    <meta property="og:image" content="/icons/deepwood-signal-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Deepwood Signal | Forest Guardian 3D" />
+    <meta
+      name="twitter:description"
+      content="Game sinh tồn 3D trong khu rừng Deepwood Signal."
+    />
+    <meta name="twitter:image" content="/icons/deepwood-signal-512.png" />
+    <link rel="icon" href="/icons/deepwood-signal.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/deepwood-favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/deepwood-apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/game-v1.webmanifest" />
+    <title>Deepwood Signal | Game sinh tồn Forest Guardian 3D</title>
+    <link rel="stylesheet" href="/game-v1.css" />
+  </head>
+  <body>
+    <main class="game-shell" id="game-shell">
+      <canvas id="game" aria-label="Deepwood Signal game"></canvas>
+
+      <section class="mobile-development" aria-labelledby="mobile-development-title">
+        <div class="mobile-development__panel">
+          <div class="mobile-development__mark" aria-hidden="true">DS</div>
+          <div class="mobile-development__eyebrow">Deepwood Signal · Mobile</div>
+          <h1 id="mobile-development-title">
+            Phiên bản mobile<br /><em>đang phát triển.</em>
+          </h1>
+          <p>
+            Chúng tôi đang tối ưu hiệu năng, điều khiển cảm ứng và trải nghiệm
+            toàn màn hình cho iPhone và Android.
+          </p>
+          <span>Vui lòng trải nghiệm phiên bản hiện tại trên máy tính.</span>
+        </div>
+      </section>
+
+      <section class="loading-screen" id="loading-screen" aria-live="polite">
+        <div class="loading-screen__content">
+          <div class="loading-screen__brand" aria-hidden="true">DS</div>
+          <div class="loading-screen__eyebrow">Deepwood Signal · First Release</div>
+          <h1>Đang đánh thức<br /><em>khu rừng.</em></h1>
+          <div class="loading-screen__meta">
+            <span id="loading-status">Khởi tạo thế giới…</span>
+            <strong id="loading-percent">0%</strong>
+          </div>
+          <div
+            class="loading-screen__track"
+            role="progressbar"
+            aria-label="Tiến trình tải game"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <i id="loading-bar"></i>
+          </div>
+          <p class="loading-screen__hint">Chuẩn bị địa hình, sinh vật và tín hiệu năng lượng</p>
+        </div>
+      </section>
+
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Trở về các bài học">
+          <span class="brand__mark" aria-hidden="true">C</span>
+          <span>
+            <strong>Deepwood Signal</strong>
+            <small>First release · v1.0</small>
+          </span>
+        </a>
+
+        <section class="mission-card" aria-live="polite">
+          <span class="mission-card__label" id="round-label">Vòng 1 · Thu hồi năng lượng</span>
+          <strong id="mission-text">Thu thập 6 lõi năng lượng</strong>
+        </section>
+
+        <div class="timer" aria-label="Thời gian còn lại">
+          <span>Hoàng hôn sau</span>
+          <strong id="timer">02:00</strong>
+        </div>
+      </header>
+
+      <section class="quick-settings" aria-label="Cài đặt nhanh">
+        <button id="weather-cycle" type="button" aria-label="Đổi thời tiết, hiện tại Sunny">
+          <span id="weather-icon" aria-hidden="true">☀</span>
+          <small id="weather-label">Sunny</small>
+        </button>
+        <button id="sound-toggle" type="button" aria-label="Tắt âm thanh" aria-pressed="true">
+          <span id="sound-icon" aria-hidden="true">♪</span>
+          <small id="sound-toggle-label">Sound on</small>
+        </button>
+      </section>
+
+      <section class="status-panel" aria-label="Trạng thái sinh tồn">
+        <div class="status-row">
+          <div class="status-label"><span>Sinh lực</span><b id="health-value">100</b></div>
+          <div class="meter"><i id="health-meter"></i></div>
+        </div>
+        <div class="status-row">
+          <div class="status-label"><span>Thể lực</span><b id="stamina-value">100</b></div>
+          <div class="meter meter--stamina"><i id="stamina-meter"></i></div>
+        </div>
+        <div class="cores">
+          <span class="cores__icon" aria-hidden="true">◆</span>
+          <span><strong id="core-count">0 / 6</strong><small>Lõi năng lượng</small></span>
+        </div>
+      </section>
+
+      <div class="reticle" aria-hidden="true"><span></span><span></span></div>
+      <div class="damage-flash" id="damage-flash" aria-hidden="true"></div>
+      <div class="victory-flash" id="victory-flash" aria-hidden="true"></div>
+
+      <section class="controls" aria-label="Điều khiển">
+        <span><kbd>WASD</kbd> Di chuyển</span>
+        <span><kbd>Shift</kbd> Chạy</span>
+        <span><kbd>Space</kbd> Nhảy</span>
+        <span><kbd>Mouse</kbd> Camera 360°</span>
+        <span><kbd>Scroll</kbd> Zoom</span>
+        <span><kbd>V</kbd> Đổi camera</span>
+        <span><kbd>M</kbd> Âm thanh</span>
+        <span><kbd>T</kbd> Thời tiết</span>
+      </section>
+
+      <div class="camera-mode" id="camera-mode">THIRD PERSON</div>
+
+      <section class="mobile-ui" aria-label="Điều khiển cảm ứng">
+        <section class="mobile-map" aria-label="Bản đồ khu rừng">
+          <header>
+            <span>Map</span>
+            <output id="map-zoom-label">1.0×</output>
+          </header>
+          <canvas id="minimap" aria-label="Vị trí người chơi và mục tiêu"></canvas>
+          <div class="mobile-map__zoom" aria-label="Phóng to thu nhỏ bản đồ">
+            <button id="map-zoom-out" type="button" aria-label="Thu nhỏ bản đồ">−</button>
+            <button id="map-zoom-in" type="button" aria-label="Phóng to bản đồ">+</button>
+          </div>
+        </section>
+
+        <button
+          class="mobile-settings-button"
+          id="mobile-settings-button"
+          type="button"
+          aria-label="Mở cài đặt"
+          aria-expanded="false"
+          aria-controls="mobile-settings"
+        >
+          <span aria-hidden="true">⚙</span>
+        </button>
+
+        <button
+          class="mobile-quick-fullscreen"
+          id="mobile-quick-fullscreen"
+          type="button"
+          aria-label="Mở toàn màn hình"
+          aria-pressed="false"
+        >
+          <span aria-hidden="true">⛶</span>
+          <small>Full</small>
+        </button>
+
+        <section class="mobile-settings" id="mobile-settings" hidden>
+          <header>
+            <strong>Settings</strong>
+            <button id="mobile-settings-close" type="button" aria-label="Đóng cài đặt">×</button>
+          </header>
+          <label>
+            <span>Độ nhạy camera</span>
+            <input id="touch-sensitivity" type="range" min="0.6" max="1.8" step="0.1" value="1" />
+          </label>
+          <label>
+            <span>Âm lượng · <output id="sound-volume-label">70%</output></span>
+            <input id="sound-volume" type="range" min="0" max="1" step="0.05" value="0.7" />
+          </label>
+          <label>
+            <span>Thời tiết</span>
+            <select id="weather-select" aria-label="Chọn thời tiết">
+              <option value="sunny">Sunny</option>
+              <option value="rainy">Rainy</option>
+            </select>
+          </label>
+          <button id="mobile-sound-toggle" type="button" aria-pressed="false">Âm thanh · Bật</button>
+          <button id="mobile-camera-setting" type="button">Camera · Third person</button>
+          <button id="mobile-fullscreen" type="button">Toàn màn hình ngang</button>
+        </section>
+
+        <section class="mobile-joystick" aria-label="Gesture di chuyển">
+          <div class="mobile-joystick__base" id="mobile-joystick">
+            <span class="mobile-joystick__stick" id="mobile-joystick-stick"></span>
+          </div>
+          <small>Di chuyển</small>
+        </section>
+
+        <section class="mobile-actions" aria-label="Hành động">
+          <button class="mobile-action mobile-action--camera" id="mobile-camera-action" type="button">
+            <span aria-hidden="true">◉</span><small>Camera</small>
+          </button>
+          <button class="mobile-action mobile-action--sprint" id="mobile-sprint-action" type="button">
+            <span aria-hidden="true">»</span><small>Chạy</small>
+          </button>
+          <button class="mobile-action mobile-action--jump" id="mobile-jump-action" type="button">
+            <span aria-hidden="true">↑</span><small>Nhảy</small>
+          </button>
+        </section>
+      </section>
+
+      <section class="rotate-device" aria-live="polite">
+        <div class="rotate-device__phone" aria-hidden="true"><span></span></div>
+        <strong>Xoay ngang màn hình</strong>
+        <p>Deepwood Signal cần chế độ landscape để hiển thị đầy đủ bản đồ và điều khiển.</p>
+      </section>
+
+      <section class="modal" id="start-modal" aria-labelledby="start-title">
+        <div class="modal__eyebrow">Transmission 001 · First release</div>
+        <h1 id="start-title">Rừng không còn<br /><em>im lặng.</em></h1>
+        <p>
+          Thu hồi 6 lõi năng lượng bị phân tán, tránh những bóng săn và trở về
+          UFO beacon trước khi hoàng hôn nuốt lấy khu rừng. Đứng yên trong vòng sáng
+          để tiến hóa, rồi tiếp tục vòng 2 bằng Forest Guardian.
+        </p>
+        <div class="briefing">
+          <span><b>01</b> Tìm lõi phát sáng</span>
+          <span><b>02</b> Giữ khoảng cách với bóng săn</span>
+          <span><b>03</b> Đứng dưới UFO beacon để tiến hóa</span>
+        </div>
+        <button class="primary-button" id="start-button" type="button" disabled>
+          Bắt đầu nhiệm vụ <span>→</span>
+        </button>
+        <a class="back-link" href="/">← Xem lại bài 11</a>
+      </section>
+
+      <section class="modal result-modal" id="result-modal" aria-live="assertive">
+        <div class="result-icon" id="result-icon">✓</div>
+        <div class="modal__eyebrow" id="result-eyebrow">Mission complete</div>
+        <h2 id="result-title">Tín hiệu đã được khôi phục.</h2>
+        <p id="result-copy">Bạn đã sống sót và đưa toàn bộ lõi trở về UFO beacon.</p>
+        <div class="result-stats">
+          <span><small>Thời gian</small><strong id="result-time">00:00</strong></span>
+          <span><small>Lõi thu thập</small><strong id="result-cores">6 / 6</strong></span>
+        </div>
+        <button class="primary-button" id="restart-button" type="button">
+          Chơi lại từ vòng 1 <span>↻</span>
+        </button>
+      </section>
+
+      <div class="toast" id="toast" role="status"></div>
+    </main>
+
+    <script type="module" src="/src/game-v1.js"></script>
+  </body>
+</html>

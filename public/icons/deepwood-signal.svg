@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Deepwood Signal</title>
+  <desc id="description">Biểu tượng mặt nạ Forest Guardian Mecha phát tín hiệu giữa khu rừng.</desc>
+  <defs>
+    <linearGradient id="background" x1="74" y1="42" x2="438" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1d3928" />
+      <stop offset="0.52" stop-color="#0c1d15" />
+      <stop offset="1" stop-color="#050c09" />
+    </linearGradient>
+    <linearGradient id="armor" x1="190" y1="126" x2="325" y2="397" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#426246" />
+      <stop offset="0.48" stop-color="#203829" />
+      <stop offset="1" stop-color="#0b1710" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="144" y1="112" x2="366" y2="374" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ecff9b" />
+      <stop offset="1" stop-color="#91bb38" />
+    </linearGradient>
+    <radialGradient id="aura" cx="0" cy="0" r="1" gradientTransform="translate(256 251) rotate(90) scale(218)">
+      <stop stop-color="#d7ff67" stop-opacity="0.16" />
+      <stop offset="0.65" stop-color="#8fbc38" stop-opacity="0.05" />
+      <stop offset="1" stop-color="#07100d" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur" />
+      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <clipPath id="frame"><rect width="512" height="512" rx="108" /></clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#07100d" />
+  <g clip-path="url(#frame)">
+    <rect width="512" height="512" fill="url(#background)" />
+    <rect width="512" height="512" fill="url(#aura)" />
+    <path d="M-12 420 92 232l39 70 48-112 58 119 56-94 45 93 57-75 129 202v89H-12Z" fill="#13271b" opacity="0.86" />
+    <path d="M4 467 88 315l40 73 43-95 43 105 51-78 42 74 50-93 91 166Z" fill="#09150e" opacity="0.93" />
+
+    <circle cx="256" cy="250" r="183" fill="none" stroke="#d7ff67" stroke-opacity="0.08" stroke-width="2" />
+    <circle cx="256" cy="250" r="151" fill="none" stroke="#d7ff67" stroke-opacity="0.13" stroke-width="3" stroke-dasharray="8 18" />
+    <path d="M176 99c19-17 46-28 80-28s61 11 80 28M137 147c29-31 68-49 119-49s90 18 119 49" fill="none" stroke="#d7ff67" stroke-linecap="round" stroke-width="8" opacity="0.78" filter="url(#glow)" />
+
+    <path d="m151 165 39-60 22 64-61 35Zm210 0-39-60-22 64 61 35Z" fill="url(#leaf)" stroke="#d7ff67" stroke-linejoin="round" stroke-width="6" />
+    <path d="m256 99 87 53 35 117-56 114-66 42-66-42-56-114 35-117Z" fill="url(#armor)" stroke="#c8ec5e" stroke-linejoin="round" stroke-width="12" />
+    <path d="m169 153 38 48-22 75-51-7Zm174 0-38 48 22 75 51-7Z" fill="#55724e" stroke="#97bb4b" stroke-linejoin="round" stroke-width="7" />
+    <path d="m256 129 55 43 17 92-34 102-38 31-38-31-34-102 17-92Z" fill="#0a1610" stroke="#729145" stroke-linejoin="round" stroke-width="7" />
+    <path d="m203 226 42 9-28 31-39-17Zm106 0-42 9 28 31 39-17Z" fill="#d7ff67" stroke="#f3ffbb" stroke-linejoin="round" stroke-width="5" filter="url(#glow)" />
+    <path d="m256 241 22 72-22 30-22-30Z" fill="#203b27" stroke="#a9d449" stroke-linejoin="round" stroke-width="6" />
+    <path d="m256 279 18 29-18 25-18-25Z" fill="#ffb44b" stroke="#ffe09b" stroke-width="4" filter="url(#glow)" />
+    <path d="m205 340 51 28 51-28-18 49-33 20-33-20Z" fill="#38523b" stroke="#789547" stroke-linejoin="round" stroke-width="5" />
+    <path d="M146 331 95 376l61-13-22 56 66-52M366 331l51 45-61-13 22 56-66-52" fill="none" stroke="url(#leaf)" stroke-linecap="round" stroke-linejoin="round" stroke-width="11" />
+    <circle cx="256" cy="279" r="7" fill="#fff4c9" />
+  </g>
+  <rect x="5" y="5" width="502" height="502" rx="103" fill="none" stroke="#d7ff67" stroke-opacity="0.28" stroke-width="10" />
+</svg>

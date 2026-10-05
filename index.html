@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Học game 3D</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <header>
+        <p class="eyebrow"></p>
+        <h1>3D</h1>
+        <a class="release-link" href="/game-v1.html">
+          <span>Play</span>
+          <strong>Deepwood Signal v1</strong>
+          <small>First release →</small>
+        </a>
+      </header>
+
+      <nav class="lesson-tabs" aria-label="Danh sách bài học" role="tablist">
+        <button type="button" data-lesson="1" role="tab">
+          <span>01</span>
+          <strong>Nền tảng 3D</strong>
+          <small>Scene · Camera · Renderer · Loop</small>
+        </button>
+        <button type="button" data-lesson="2" role="tab">
+          <span>02</span>
+          <strong>Transform</strong>
+          <small>Position · Rotation · Scale</small>
+        </button>
+        <button type="button" data-lesson="3" role="tab">
+          <span>03</span>
+          <strong>Player</strong>
+          <small>Input · Direction · Delta time</small>
+        </button>
+        <button type="button" data-lesson="4" role="tab">
+          <span>04</span>
+          <strong>Physics collider</strong>
+          <small>Ground · Rock · Player capsule</small>
+        </button>
+        <button type="button" data-lesson="5" role="tab">
+          <span>05</span>
+          <strong>GLB animation</strong>
+          <small>Idle · Hop · Run · Eat</small>
+        </button>
+        <button type="button" data-lesson="6" role="tab">
+          <span>06</span>
+          <strong>GLB Inspector</strong>
+          <small>Skeleton · Clips · Mixer</small>
+        </button>
+        <button type="button" data-lesson="7" role="tab">
+          <span>07</span>
+          <strong>Robot Controller</strong>
+          <small>Rig · WASD · State machine</small>
+        </button>
+        <button type="button" data-lesson="8" role="tab">
+          <span>08</span>
+          <strong>Forest Guardian Controller</strong>
+          <small>Rig · WASD · State machine</small>
+        </button>
+        <button type="button" data-lesson="9" role="tab">
+          <span>09</span>
+          <strong>Rabbit Controller</strong>
+          <small>WASD · Capsule · Animation</small>
+        </button>
+        <button type="button" data-lesson="10" role="tab">
+          <span>10</span>
+          <strong>Forest Environment</strong>
+          <small>Terrain · Trees · Grass · Fog</small>
+        </button>
+        <button type="button" data-lesson="11" role="tab">
+          <span>11</span>
+          <strong>Camera Controller</strong>
+          <small>First person · Third person · Mouse</small>
+        </button>
+        <button type="button" data-lesson="12" role="tab">
+          <span>12</span>
+          <strong>Eagle Controller</strong>
+          <small>WASD · Wing rig · Attack</small>
+        </button>
+      </nav>
+
+      <p class="sidebar-note">Chọn một bài để dựng lại scene tương ứng.</p>
+    </aside>
+
+    <main class="stage">
+      <canvas id="game"></canvas>
+      <section class="lesson-info">
+        <span id="lesson-number"></span>
+        <div>
+          <strong id="lesson-title"></strong>
+          <p id="lesson-description"></p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
