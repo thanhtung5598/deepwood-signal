@@ -349,11 +349,11 @@ function updateMovementSounds(deltaTime, running) {
 updateSoundControls();
 
 const loadingManager = new THREE.LoadingManager();
-// Startup waits for the lightweight player and detailed trees.
+// Startup waits for the lightweight player and detailed evergreen trees.
 const startupModelLoader = createStartupProgressLoader(
   new GLTFLoader(loadingManager), modelByteSizes, updateLoadingProgress,
 );
-// Other scene details load during play.
+// Other scene details start loading in the background after the startup screen.
 const backgroundModelLoader = createBackgroundModelLoader(
   new GLTFLoader(new THREE.LoadingManager()),
 );
@@ -465,7 +465,16 @@ Promise.all([modelAssetsReady, rendererReady]).then(() => {
       : "Tài nguyên vòng 1 đã sẵn sàng";
     startButton.disabled = false;
     startModal.classList.add("is-visible");
-    window.setTimeout(() => loadingScreen.classList.add("is-complete"), 180);
+    window.setTimeout(() => {
+      loadingScreen.classList.add("is-complete");
+      // Preload the remaining assets while the player is still on the intro.
+      void loadForestGuardian().catch((error) => {
+        console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
+      });
+      void backgroundModelLoader.start().catch((error) => {
+        console.warn("Chưa tải được toàn bộ chi tiết khu rừng", error);
+      });
+    }, 180);
   }, remainingDelay);
 });
 
@@ -638,7 +647,7 @@ const trees = createTrees(random, treeColliders, {
   worldHalfExtent: GAME_HALF_WORLD,
 });
 const ancientOak = createAncientOak(treeColliders, {
-  modelLoader: startupModelLoader,
+  modelLoader: backgroundModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/majestic-ancient-oak.glb",
   position: {
     x: ANCIENT_OAK_X,
@@ -2012,13 +2021,6 @@ function startGame() {
   resultModal.classList.remove("is-visible");
   requestGamePointerLock();
   showToast("Tìm các tín hiệu màu xanh trong rừng");
-  // Start the round-two download only after the user can play round one.
-  void loadForestGuardian().catch((error) => {
-    console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
-  });
-  void backgroundModelLoader.start().catch((error) => {
-    console.warn("Chưa tải được toàn bộ chi tiết khu rừng", error);
-  });
 }
 
 function finishGame(won, reason = "") {

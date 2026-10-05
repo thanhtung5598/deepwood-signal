@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createBackgroundModelLoader } from "../src/background-model-loader.js";
 
-test("scene details do not download until gameplay starts", async () => {
+test("scene details do not download until the background queue is started", async () => {
   const requested = [];
   const installed = [];
   const loader = createBackgroundModelLoader({
