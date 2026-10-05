@@ -706,6 +706,7 @@ export function createTrees(
   colliders,
   {
     modelUrl = null,
+    modelLoader = null,
     chunkSize = 0,
     castShadow = true,
     receiveShadow = true,
@@ -793,7 +794,7 @@ export function createTrees(
   // geometry/material của nó được dùng chung cho 140 instance, thay vì clone
   // 140 scene GLTF riêng lẻ. Collider vẫn dùng placement đã tạo ở trên.
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
@@ -887,6 +888,7 @@ export function createRocks(
   colliders,
   {
     modelUrl = null,
+    modelLoader = null,
     castShadow = true,
     receiveShadow = true,
     worldHalfExtent = HALF_WORLD,
@@ -955,7 +957,7 @@ export function createRocks(
   // Giữ đá procedural làm fallback trong lúc GLB tải. Model nhập được căn giữa
   // theo XZ, đặt đáy tại Y = 0 rồi dùng chung cho toàn bộ 64 instance.
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
@@ -1058,6 +1060,7 @@ export function createLogs(
   avoidColliders = [],
   {
     modelUrl = null,
+    modelLoader = null,
     castShadow = true,
     receiveShadow = true,
     worldHalfExtent = HALF_WORLD,
@@ -1141,7 +1144,7 @@ export function createLogs(
   // Dùng cylinder rỗng làm fallback trong lúc GLB tải; khi tải xong model được
   // chuẩn hóa theo chiều dài, đặt đáy tại Y = 0 và chia sẻ qua 4 instance.
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
@@ -1240,6 +1243,7 @@ export function createShrubs(
   avoidColliders = [],
   {
     modelUrl = null,
+    modelLoader = null,
     castShadow = true,
     receiveShadow = true,
     worldHalfExtent = HALF_WORLD,
@@ -1323,7 +1327,7 @@ export function createShrubs(
   // Giữ khối foliage low-poly làm fallback trong lúc GLB tải. Model thật được
   // căn gốc xuống terrain và dùng chung qua toàn bộ instance.
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
@@ -1417,6 +1421,7 @@ export function createBerryBushes(
   avoidColliders = [],
   {
     modelUrl = null,
+    modelLoader = null,
     castShadow = true,
     receiveShadow = true,
     worldHalfExtent = HALF_WORLD,
@@ -1499,7 +1504,7 @@ export function createBerryBushes(
   // Giữ bụi low-poly làm fallback trong lúc GLB tải; model thật được căn gốc
   // xuống terrain và chia sẻ geometry/material cho toàn bộ instance.
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
@@ -1589,7 +1594,7 @@ export function createBerryBushes(
 // được thêm vào treeColliders để dùng chung cho player collision và camera.
 export function createAncientOak(
   colliders,
-  { modelUrl = null, position = null, rotationY = -0.28 } = {},
+  { modelUrl = null, modelLoader = null, position = null, rotationY = -0.28 } = {},
 ) {
   const targetHeight = 8.5;
   const z = position?.z ?? 2;
@@ -1635,7 +1640,7 @@ export function createAncientOak(
   });
 
   if (modelUrl) {
-    const loader = new GLTFLoader();
+    const loader = modelLoader ?? new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {

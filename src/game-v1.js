@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { createInPlaceClip } from "./animation-utils.js";
 import { createDeferredAssetLoader } from "./deferred-asset-loader.js";
+import { createBackgroundModelLoader } from "./background-model-loader.js";
 import { createProceduralGrassField } from "./grass-field.js";
 import {
   createButterflyField,
@@ -202,9 +203,8 @@ const useCompatibilityRenderer =
   isSafari ||
   !window.isSecureContext ||
   !("gpu" in navigator);
-const playerModelUrl = useCompatibilityRenderer
-  ? "/models/futuristic-robot-animated-mobile.glb"
-  : "/models/futuristic-robot-animated.glb";
+// This existing animated model is also the desktop's lightweight first load.
+const playerModelUrl = "/models/futuristic-robot-animated-mobile.glb";
 const forestGuardianModelUrl = useCompatibilityRenderer
   ? "/models/forest-guardian-mecha-animated-mobile.glb"
   : "/models/forest-guardian-mecha-animated.glb";
@@ -346,8 +346,13 @@ function updateMovementSounds(deltaTime, running) {
 
 updateSoundControls();
 
-const loadingManager = THREE.DefaultLoadingManager;
-// Only round-one assets use this manager. Forest Guardian has its own loader.
+const loadingManager = new THREE.LoadingManager();
+// Startup waits for the lightweight player, detailed trees, and rocks.
+const startupModelLoader = new GLTFLoader(loadingManager);
+// Other scene details load during play.
+const backgroundModelLoader = createBackgroundModelLoader(
+  new GLTFLoader(new THREE.LoadingManager()),
+);
 const failedAssets = new Set();
 const loadingStartedAt = performance.now();
 let assetsReady = false;
@@ -414,8 +419,7 @@ const rendererReady = (
   console.info(`Deepwood renderer: ${rendererName.toUpperCase()}`);
 });
 
-const fontsReady = document.fonts?.ready ?? Promise.resolve();
-Promise.all([modelAssetsReady, fontsReady, rendererReady]).then(() => {
+Promise.all([modelAssetsReady, rendererReady]).then(() => {
   const minimumDisplayTime = 700;
   const remainingDelay = Math.max(0, minimumDisplayTime - (performance.now() - loadingStartedAt));
   window.setTimeout(() => {
@@ -593,6 +597,7 @@ const terrain = useCompatibilityRenderer
     });
 const trail = createTrail({ worldSize: GAME_WORLD_SIZE, segments: 160 });
 const trees = createTrees(random, treeColliders, {
+  modelLoader: startupModelLoader,
   modelUrl: useCompatibilityRenderer
     ? null
     : "/models/stylized-layered-evergreen-tree.glb",
@@ -600,6 +605,7 @@ const trees = createTrees(random, treeColliders, {
   worldHalfExtent: GAME_HALF_WORLD,
 });
 const ancientOak = createAncientOak(treeColliders, {
+  modelLoader: startupModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/majestic-ancient-oak.glb",
   position: {
     x: ANCIENT_OAK_X,
@@ -611,11 +617,13 @@ const ancientOak = createAncientOak(treeColliders, {
 // bounding box để các đầu rễ cắm vào sườn địa hình, không còn cảm giác lơ lửng.
 ancientOak.position.y -= 0.72;
 const rocks = createRocks(random, rockColliders, {
+  modelLoader: startupModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/mossy-faceted-boulder.glb",
   castShadow: false,
   worldHalfExtent: GAME_HALF_WORLD,
 });
 const logs = createLogs(random, logColliders, [...treeColliders, ...rockColliders], {
+  modelLoader: backgroundModelLoader,
   modelUrl: useCompatibilityRenderer ? null : "/models/weathered-hollow-log.glb",
   castShadow: false,
   worldHalfExtent: GAME_HALF_WORLD,
@@ -625,6 +633,7 @@ const shrubs = createShrubs(
   shrubColliders,
   [...treeColliders, ...rockColliders, ...logColliders],
   {
+    modelLoader: backgroundModelLoader,
     modelUrl: useCompatibilityRenderer
       ? null
       : "/models/stylized-multi-trunk-leafy-shrub.glb",
@@ -638,6 +647,7 @@ const berryBushes = createBerryBushes(
   berryBushColliders,
   [...treeColliders, ...rockColliders, ...logColliders, ...shrubColliders],
   {
+    modelLoader: backgroundModelLoader,
     modelUrl: useCompatibilityRenderer
       ? null
       : "/models/bountiful-red-berry-bush.glb",
@@ -962,36 +972,110 @@ function playAnimation(name) {
   }
 }
 
-new GLTFLoader().load(
-  playerModelUrl,
-  (gltf) => {
-    player.model = gltf.scene;
-    player.model.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(player.model);
-    const sourceHeight = bounds.getSize(new THREE.Vector3()).y;
-    player.model.scale.setScalar(sourceHeight > 0 ? 2.15 / sourceHeight : 1);
-    player.model.updateMatrixWorld(true);
-    bounds.setFromObject(player.model);
-    const center = bounds.getCenter(new THREE.Vector3());
-    player.model.position.set(-center.x, -bounds.min.y, -center.z);
-    player.modelBasePosition.copy(player.model.position);
-    player.modelBaseScale.copy(player.model.scale);
-    player.modelBaseQuaternion.copy(player.model.quaternion);
-    player.model.traverse((object) => {
-      if (!object.isMesh) return;
-      object.castShadow = true;
-      object.receiveShadow = true;
-    });
-    playerRoot.add(player.model);
-    player.mixer = new THREE.AnimationMixer(player.model);
-    for (const clip of gltf.animations) {
-      player.actions.set(clip.name, player.mixer.clipAction(clip));
+let pendingDetailedPlayer = null;
+
+function installPlayerModel(gltf) {
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  const sourceHeight = bounds.getSize(new THREE.Vector3()).y;
+  model.scale.setScalar(sourceHeight > 0 ? 2.15 / sourceHeight : 1);
+  model.updateMatrixWorld(true);
+  bounds.setFromObject(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  model.position.set(-center.x, -bounds.min.y, -center.z);
+  model.visible = currentRound === 1 && cameraMode === "third";
+  model.traverse((object) => {
+    if (!object.isMesh) return;
+    const weights = object.geometry.getAttribute("skinWeight");
+    if (weights?.isInterleavedBufferAttribute && weights.normalized) {
+      // Quantized weights share bytes with joint indices in the light model.
+      // WebGPU expands the indices to uint32, so keep weights in their own buffer.
+      const unpacked = new Float32Array(weights.count * weights.itemSize);
+      for (let i = 0; i < weights.count; i++) {
+        for (let component = 0; component < weights.itemSize; component++) {
+          unpacked[i * weights.itemSize + component] = weights.getComponent(
+            i, component,
+          );
+        }
+      }
+      object.geometry.setAttribute(
+        "skinWeight",
+        new THREE.Float32BufferAttribute(unpacked, weights.itemSize),
+      );
     }
-    playAnimation("idle");
-  },
+    object.castShadow = true;
+    object.receiveShadow = true;
+  });
+  const previousModel = player.model;
+  const previousMixer = player.mixer;
+  const animation = player.activeState || "idle";
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = new Map();
+  for (const clip of gltf.animations) {
+    actions.set(clip.name, mixer.clipAction(clip));
+  }
+  playerRoot.add(model);
+  player.model = model;
+  player.mixer = mixer;
+  player.actions = actions;
+  player.activeAction = null;
+  player.activeState = "";
+  player.modelBasePosition.copy(model.position);
+  player.modelBaseScale.copy(model.scale);
+  player.modelBaseQuaternion.copy(model.quaternion);
+  if (currentRound === 1) playAnimation(animation);
+  if (previousModel) {
+    previousMixer?.stopAllAction();
+    previousMixer?.uncacheRoot(previousModel);
+    previousModel.removeFromParent();
+    const geometries = new Set();
+    const materials = new Set();
+    const textures = new Set();
+    previousModel.traverse((object) => {
+      if (!object.isMesh) return;
+      geometries.add(object.geometry);
+      for (const material of [object.material].flat()) {
+        materials.add(material);
+        for (const value of Object.values(material)) {
+          if (value?.isTexture) textures.add(value);
+        }
+      }
+    });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+    for (const texture of textures) texture.dispose();
+  }
+}
+
+function installPendingDetailedPlayer() {
+  if (!pendingDetailedPlayer) return;
+  installPlayerModel(pendingDetailedPlayer);
+  pendingDetailedPlayer = null;
+}
+
+startupModelLoader.load(
+  playerModelUrl,
+  installPlayerModel,
   undefined,
   (error) => console.error("Không tải được nhân vật v1", error),
 );
+
+if (!useCompatibilityRenderer) {
+  backgroundModelLoader.load(
+    "/models/futuristic-robot-animated.glb",
+    (gltf) => {
+      // The transformation keeps references to the original robot's bones.
+      if (gameState === "transforming" || gameState === "loading-round-two") {
+        pendingDetailedPlayer = gltf;
+      } else {
+        installPlayerModel(gltf);
+      }
+    },
+    undefined,
+    (error) => console.warn("Giữ robot nhẹ vì model chi tiết chưa tải được", error),
+  );
+}
 
 const loadForestGuardian = createDeferredAssetLoader(async () => {
   // A separate manager keeps background work out of the startup progress/gate.
@@ -1330,7 +1414,7 @@ const hunters = [
 // Mobile giữ Bóng Săn procedural để tránh giải nén thêm ba texture 4K. Desktop
 // tải một lần rồi clone cả skeleton cho bốn Bóng Săn.
 if (!useCompatibilityRenderer) {
-  new GLTFLoader().load(
+  backgroundModelLoader.load(
     "/models/fantasy-bird.glb",
     (gltf) => {
     gltf.scene.updateMatrixWorld(true);
@@ -1826,6 +1910,7 @@ function beginRoundTwo() {
   resetRoundObjects();
   updateSpatialCulling(0, true);
   updateHud();
+  installPendingDetailedPlayer();
   requestGamePointerLock();
   showToast("Vòng 2 — dùng Forest Guardian thu thập năng lượng!");
 }
@@ -1835,6 +1920,7 @@ function resetGame() {
   currentRound = 1;
   randomizeWeather();
   restoreVictoryVisuals();
+  installPendingDetailedPlayer();
   health = 100;
   stamina = 100;
   sprintExhausted = false;
@@ -1896,6 +1982,9 @@ function startGame() {
   // Start the round-two download only after the user can play round one.
   void loadForestGuardian().catch((error) => {
     console.warn("Forest Guardian sẽ được tải lại khi chuyển vòng", error);
+  });
+  void backgroundModelLoader.start().catch((error) => {
+    console.warn("Chưa tải được toàn bộ chi tiết khu rừng", error);
   });
 }
 
