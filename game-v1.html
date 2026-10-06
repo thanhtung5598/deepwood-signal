@@ -162,6 +162,24 @@
       <div class="damage-flash" id="damage-flash" aria-hidden="true"></div>
       <div class="victory-flash" id="victory-flash" aria-hidden="true"></div>
 
+      <section class="energy-minigame" id="energy-minigame" aria-labelledby="energy-title" hidden>
+        <div class="energy-minigame__heading">
+          <div><span class="modal__eyebrow">Guardian · Điều tiết lõi</span><h2 id="energy-title">Nối mạch năng lượng</h2></div>
+          <strong id="energy-countdown" aria-label="Thời gian nối mạch còn lại">15s</strong>
+        </div>
+        <p>Click hoặc chạm vào từng ô để xoay <strong>90°</strong>. Nối <strong>nguồn bên trái</strong> tới <strong>lõi bên phải</strong>; mạch có điện sẽ sáng xanh.</p>
+        <div class="energy-circuit">
+          <span class="energy-circuit__port is-powered" aria-label="Nguồn điện bên trái">→</span>
+          <div class="energy-circuit__grid" id="energy-circuit-grid" role="group" aria-label="Mạch năng lượng 3 hàng, 3 cột"></div>
+          <span class="energy-circuit__port" id="energy-core-port" aria-label="Lõi năng lượng bên phải">◆</span>
+        </div>
+        <div class="energy-minigame__readings">
+          <span id="energy-connection">Nguồn đang ngắt</span><span>Nhiệt lõi <b id="energy-heat-label">25%</b></span>
+        </div>
+        <div class="energy-minigame__heat" role="progressbar" id="energy-heat" aria-label="Nhiệt lõi; 100 phần trăm gây quá tải" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25"><i id="energy-heat-fill"></i></div>
+        <p class="energy-minigame__feedback" id="energy-feedback" role="status">Bạn có 15 giây. Hết giờ, lõi quá tải và robot phát nổ.</p>
+      </section>
+
       <section class="controls" aria-label="Điều khiển">
         <span><kbd>WASD</kbd> Di chuyển</span>
         <span><kbd>Shift</kbd> Chạy</span>
@@ -266,7 +284,8 @@
         <p>
           Thu hồi 6 lõi năng lượng bị phân tán, tránh những bóng săn và trở về
           UFO beacon trước khi hoàng hôn nuốt lấy khu rừng. Đứng yên trong vòng sáng
-          để nạp năng lượng, rồi cùng robot tiếp tục vòng 2.
+          để nạp năng lượng. Nối mạch từ nguồn tới lõi trong 15 giây để sang vòng 2;
+          quá tải sẽ làm robot phát nổ và bắt đầu lại vòng 1.
         </p>
         <div class="briefing-transmission" id="briefing-transmission" role="status" aria-live="polite" hidden>
           <i aria-hidden="true"></i><span id="briefing-status">Đang nhận tín hiệu nhiệm vụ…</span>
@@ -274,7 +293,7 @@
         <div class="briefing" id="mission-briefing">
           <span><b>01</b> Thu thập 6 lõi năng lượng</span>
           <span><b>02</b> Tránh những bóng săn</span>
-          <span><b>03</b> Trở về UFO để nạp năng lượng</span>
+          <span><b>03</b> Trở về UFO và ổn định năng lượng</span>
         </div>
         <button class="primary-button" id="start-button" type="button" disabled>
           <span id="start-button-label">Bắt đầu nhiệm vụ</span><span aria-hidden="true">→</span>

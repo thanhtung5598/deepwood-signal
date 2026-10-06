@@ -6,6 +6,8 @@ import { createBackgroundModelLoader } from "./background-model-loader.js";
 import { createStartupProgressLoader, advanceLoadingEstimate } from "./startup-loading-progress.js";
 import modelByteSizes from "virtual:model-sizes";
 import { createMissionBriefing } from "./mission-briefing.js";
+import { createEnergyCircuit } from "./energy-circuit.js";
+import { createReactorExplosion } from "./reactor-explosion.js";
 import { createProceduralGrassField } from "./grass-field.js";
 import {
   createButterflyField,
@@ -140,6 +142,15 @@ const coreCount = document.querySelector("#core-count");
 const cameraModeElement = document.querySelector("#camera-mode");
 const damageFlash = document.querySelector("#damage-flash");
 const victoryFlash = document.querySelector("#victory-flash");
+const energyPanel = document.querySelector("#energy-minigame");
+const energyCountdown = document.querySelector("#energy-countdown");
+const energyGrid = document.querySelector("#energy-circuit-grid");
+const energyConnection = document.querySelector("#energy-connection");
+const energyCorePort = document.querySelector("#energy-core-port");
+const energyHeat = document.querySelector("#energy-heat");
+const energyHeatLabel = document.querySelector("#energy-heat-label");
+const energyHeatFill = document.querySelector("#energy-heat-fill");
+const energyFeedback = document.querySelector("#energy-feedback");
 const toastElement = document.querySelector("#toast");
 const loadingScreen = document.querySelector("#loading-screen");
 const loadingStatus = document.querySelector("#loading-status");
@@ -203,6 +214,7 @@ const SOUND_URLS = {
   monsterAttack: "/audio/game-v1/monster-attack.wav",
   energyHarvest: "/audio/game-v1/energy-harvest.wav",
   transformer: "/audio/game-v1/transformer.wav",
+  reactorOverload: "/audio/game-v1/robot-overload.wav",
 };
 
 function readSoundSetting(key, fallback) {
@@ -946,6 +958,8 @@ function createTransformedCore() {
 const victoryTransformationFx = createVictoryTransformationFx();
 const transformedCore = createTransformedCore();
 playerRoot.add(victoryTransformationFx, transformedCore);
+const reactorExplosion = createReactorExplosion();
+scene.add(reactorExplosion.group);
 
 function playAnimation(name) {
   const { mixer, actions, activeState } = player;
@@ -1068,7 +1082,7 @@ if (!useCompatibilityRenderer) {
     "/models/futuristic-robot-animated.glb",
     (gltf) => {
       // The transformation keeps references to the original robot's bones.
-      if (gameState === "transforming") {
+      if (victoryTransformation) {
         pendingDetailedPlayer = gltf;
       } else {
         installPlayerModel(gltf);
@@ -1474,6 +1488,7 @@ let damageCooldown = 0;
 let toastTimeout = 0;
 let environmentCullElapsed = ENVIRONMENT_CULL_INTERVAL;
 let victoryTransformation = null;
+let overloadRetryRemaining = null;
 let beaconStillTime = 0;
 let wasInsideBeacon = false;
 let currentWeather = "sunny";
@@ -1539,6 +1554,9 @@ function restoreVictoryVisuals() {
   victoryTransformationFx.visible = false;
   transformedCore.visible = false;
   victoryFlash.classList.remove("is-active");
+  victoryFlash.classList.remove("is-overload");
+  energyPanel.hidden = true;
+  reactorExplosion.reset();
   if (player.model) {
     player.mixer?.stopAllAction();
     player.model.visible = true;
@@ -1559,7 +1577,7 @@ function beginVictoryTransformation() {
   resetTouchInput();
   document.exitPointerLock?.();
   cameraMode = "third";
-  cameraModeElement.textContent = "TRANSFORMATION";
+  cameraModeElement.textContent = "ENERGY STABILIZATION";
   targetThirdPersonDistance = 4.6;
   playerMarker.visible = false;
   if (player.model) player.model.visible = true;
@@ -1581,10 +1599,100 @@ function beginVictoryTransformation() {
     swapped: false,
     bones,
     materials: collectVictoryMaterials(player.model),
+    circuit: createEnergyCircuit(),
+    successAt: null,
   };
   victoryTransformationFx.visible = true;
-  missionText.textContent = "Năng lượng đang cộng hưởng";
-  showToast("Lõi năng lượng thức tỉnh — bắt đầu biến hình!");
+  missionText.textContent = "Nối nguồn điện tới lõi để tránh quá tải";
+  energyPanel.hidden = false;
+  energyFeedback.textContent = "Bạn có 15 giây. Hết giờ, lõi quá tải và robot phát nổ.";
+  createCircuitTiles();
+  updateEnergyPanel();
+  energyGrid.children[3].focus({ preventScroll: true });
+  showToast("Nạp năng lượng — xoay mạch để nối nguồn tới lõi!");
+}
+
+function createCircuitTiles() {
+  energyGrid.replaceChildren();
+  const directions = [[1, "50 0"], [2, "100 50"], [4, "50 100"], [8, "0 50"]];
+  for (const [index, tile] of victoryTransformation.circuit.snapshot().tiles.entries()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "energy-circuit__tile";
+    button.dataset.tileIndex = String(index);
+    const path = directions.filter(([port]) => tile.basePorts & port).map(([, point]) => `M50 50L${point}`).join(" ");
+    button.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><g><path class="circuit-wire-bed" d="${path}"/><path class="circuit-wire" d="${path}"/><circle class="circuit-joint" cx="50" cy="50" r="9"/></g></svg>`;
+    energyGrid.append(button);
+  }
+  updateCircuitTiles();
+}
+
+function updateCircuitTiles() {
+  const state = victoryTransformation.circuit.snapshot();
+  const directions = [[1, "trên"], [2, "phải"], [4, "dưới"], [8, "trái"]];
+  [...energyGrid.children].forEach((button, index) => {
+    const tile = state.tiles[index];
+    button.querySelector("g").style.transform = `rotate(${tile.turns * 90}deg)`;
+    button.classList.toggle("is-powered", tile.powered);
+    button.disabled = state.status !== "active";
+    const ports = directions.filter(([port]) => tile.ports & port).map(([, name]) => name).join(" và ");
+    button.setAttribute("aria-label", `Xoay ô hàng ${Math.floor(index / 3) + 1}, cột ${index % 3 + 1}; nối ${ports}; ${tile.powered ? "có điện" : "chưa có điện"}`);
+  });
+  energyCorePort.classList.toggle("is-powered", state.status === "success");
+}
+
+function updateEnergyPanel() {
+  if (!victoryTransformation?.circuit) return;
+  const state = victoryTransformation.circuit.snapshot();
+  energyCountdown.textContent = `${Math.ceil(state.remaining)}s`;
+  energyConnection.textContent = state.status === "success" ? "Nguồn đã nối tới lõi" : state.sourcePowered ? "Lõi chưa nhận điện" : "Nguồn đang ngắt";
+  const heat = Math.round(state.heat * 100);
+  energyHeatLabel.textContent = `${heat}%`;
+  energyHeatFill.style.width = `${heat}%`;
+  energyHeat.setAttribute("aria-valuenow", String(heat));
+  energyPanel.classList.toggle("is-danger", state.heat >= 0.7);
+}
+
+function rotateEnergyCircuit(index) {
+  if (gameState !== "transforming" || pauseMenu.open || document.hidden) return;
+  if (!victoryTransformation.circuit.rotate(index)) return;
+  const state = victoryTransformation.circuit.snapshot();
+  updateCircuitTiles();
+  playGameSound("robotWalk", { volume: 0.15, playbackRate: 1.6 });
+  updateEnergyPanel();
+  if (state.status === "success") {
+    victoryTransformation.successAt = victoryTransformation.time;
+    missionText.textContent = "Lõi ổn định — chuẩn bị vòng 2";
+    energyFeedback.textContent = "Mạch đã thông! Năng lượng đang truyền tới lõi.";
+    playGameSound("energyHarvest", { volume: 0.5 });
+  }
+}
+
+function beginEnergyOverload() {
+  if (gameState !== "transforming") return;
+  gameState = "overloading";
+  victoryTransformation.overloadTime = 0;
+  energyPanel.hidden = true;
+  victoryTransformationFx.visible = false;
+  transformedCore.visible = false;
+  if (player.model) player.model.visible = false;
+  health = 0;
+  missionText.textContent = "Quá tải năng lượng — robot phát nổ";
+  cameraModeElement.textContent = "REACTOR OVERLOAD";
+  for (const voice of soundPools.get("transformer")) voice.pause();
+  playGameSound("reactorOverload", { volume: 0.85 });
+  reactorExplosion.start(playerRoot.position);
+  victoryFlash.classList.remove("is-active");
+  victoryFlash.classList.add("is-overload");
+}
+
+function updateEnergyOverload(deltaTime) {
+  victoryTransformation.overloadTime += deltaTime;
+  reactorExplosion.update(victoryTransformation.overloadTime);
+  if (victoryTransformation.overloadTime < 1.4) return;
+  gameState = "lost";
+  overloadRetryRemaining = 4;
+  showGameResult(false, "overload", elapsedTime);
 }
 
 function activatePoweredRobot() {
@@ -1617,7 +1725,16 @@ function activatePoweredRobot() {
 function updateVictoryTransformation(deltaTime) {
   if (!victoryTransformation) return;
   victoryTransformation.time += deltaTime;
-  const time = victoryTransformation.time;
+  const state = victoryTransformation.circuit.advance(deltaTime);
+  updateEnergyPanel();
+  if (state.status === "failed") {
+    beginEnergyOverload();
+    return;
+  }
+  const stabilized = state.status === "success";
+  const time = stabilized
+    ? VICTORY_SWAP_TIME + victoryTransformation.time - victoryTransformation.successAt
+    : Math.min(victoryTransformation.time, VICTORY_SWAP_TIME - 0.2);
   const progress = THREE.MathUtils.clamp(
     time / VICTORY_TRANSFORM_DURATION,
     0,
@@ -1675,7 +1792,7 @@ function updateVictoryTransformation(deltaTime) {
   particles.position.y = -0.18 + Math.sin(time * 5) * 0.08;
   light.intensity = fxStrength * 5.5;
 
-  if (time >= VICTORY_SWAP_TIME) activatePoweredRobot();
+  if (stabilized) activatePoweredRobot();
   if (victoryTransformation.swapped) {
     const pulse = 1 + Math.sin(time * 6) * 0.08;
     transformedCore.userData.halo.scale.setScalar(pulse);
@@ -1687,7 +1804,8 @@ function updateVictoryTransformation(deltaTime) {
   flatForward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
   cameraRight.set(-flatForward.z, 0, flatForward.x).normalize();
 
-  if (time < VICTORY_TRANSFORM_DURATION) return;
+  if (!stabilized || time < VICTORY_TRANSFORM_DURATION) return;
+  energyPanel.hidden = true;
   victoryTransformationFx.visible = false;
   beginRoundTwo();
 }
@@ -1732,7 +1850,7 @@ function openPauseMenu() {
   mouseDragging = false;
   setMobileSettingsOpen(false);
   resumeButton.textContent =
-    gameState === "playing" || gameState === "transforming"
+    gameState === "playing" || gameState === "transforming" || gameState === "overloading"
       ? "Tiếp tục chơi"
       : "Đóng menu";
   pauseMenu.showModal();
@@ -1815,6 +1933,7 @@ function beginRoundTwo() {
 }
 
 function resetGame() {
+  overloadRetryRemaining = null;
   currentRound = 1;
   randomizeWeather();
   restoreVictoryVisuals();
@@ -1896,7 +2015,7 @@ function updateMissionBriefing(deltaTime) {
   }
 }
 
-function startGame() {
+function startGame({ automatic = false } = {}) {
   if (!assetsReady || !missionBriefing.ready) return;
   missionBriefing.markSeen();
   resetGame();
@@ -1904,7 +2023,7 @@ function startGame() {
   startForestAmbience();
   startModal.classList.remove("is-visible");
   resultModal.classList.remove("is-visible");
-  requestGamePointerLock();
+  if (!automatic) requestGamePointerLock();
   showToast("Tìm các tín hiệu màu xanh trong rừng");
 }
 
@@ -1932,12 +2051,16 @@ function showGameResult(won, reason = "", resultTime = elapsedTime) {
   document.querySelector("#result-eyebrow").textContent = won ? "Mission complete" : "Mission failed";
   document.querySelector("#result-title").textContent = won
     ? "Hai vòng đã hoàn tất."
-    : reason === "health"
+    : reason === "overload"
+      ? "Robot đã phát nổ."
+      : reason === "health"
       ? "Bóng tối đã bắt kịp bạn."
       : "Hoàng hôn đã buông xuống.";
   document.querySelector("#result-copy").textContent = won
     ? "Robot đã thu hồi trọn vẹn nguồn năng lượng của khu rừng qua hai vòng nhiệm vụ."
-    : "Rừng vẫn còn ở đó. Điều chỉnh lộ trình và thử lại nhiệm vụ.";
+    : reason === "overload"
+      ? "Lõi năng lượng quá tải. Tự khởi động lại vòng 1 sau 4 giây."
+      : "Rừng vẫn còn ở đó. Điều chỉnh lộ trình và thử lại nhiệm vụ.";
   document.querySelector("#result-time").textContent = formatTime(resultTime, false);
   document.querySelector("#result-cores").textContent = `${collectedCores} / ${TOTAL_CORES}`;
   resultModal.classList.add("is-visible");
@@ -2694,6 +2817,8 @@ function onKeyDown(event) {
     return;
   }
   if (pauseMenu.open) return;
+  // Circuit buttons handle click, Enter and Space natively while movement stops.
+  if (gameState === "transforming") return;
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
   if (event.code === "KeyV" && !event.repeat && gameState === "playing") toggleCameraMode();
   if (gameState === "playing") pressedKeys.add(event.code);
@@ -3041,6 +3166,10 @@ startButton.addEventListener("click", () => {
   startGame();
 });
 restartButton.addEventListener("click", startGame);
+energyGrid.addEventListener("click", (event) => {
+  const tile = event.target.closest("button[data-tile-index]");
+  if (tile && energyGrid.contains(tile)) rotateEnergyCircuit(Number(tile.dataset.tileIndex));
+});
 
 function resize() {
   const width = window.innerWidth;
@@ -3068,6 +3197,7 @@ screen.orientation?.addEventListener("change", () => {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     forestAmbience.pause();
+    if (gameState === "transforming" || gameState === "overloading" || overloadRetryRemaining !== null) openPauseMenu();
   } else if (gameState === "playing" || gameState === "transforming") {
     startForestAmbience();
   }
@@ -3086,7 +3216,7 @@ camera.position.set(
 const clock = new THREE.Clock();
 function gameLoop() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
-  if (pauseMenu.open) {
+  if (pauseMenu.open || document.hidden) {
     updateAtmosphere();
     renderer.render(scene, camera);
     requestAnimationFrame(gameLoop);
@@ -3105,6 +3235,14 @@ function gameLoop() {
     if (timeRemaining <= 0) finishGame(false, "time");
   }
   if (gameState === "transforming") updateVictoryTransformation(deltaTime);
+  if (gameState === "overloading") updateEnergyOverload(deltaTime);
+  if (gameState === "lost" && overloadRetryRemaining !== null) {
+    overloadRetryRemaining = Math.max(0, overloadRetryRemaining - deltaTime);
+    const copy = `Lõi năng lượng quá tải. Tự khởi động lại vòng 1 sau ${Math.ceil(overloadRetryRemaining)} giây.`;
+    const resultCopy = document.querySelector("#result-copy");
+    if (resultCopy.textContent !== copy) resultCopy.textContent = copy;
+    if (overloadRetryRemaining === 0) startGame({ automatic: true });
+  }
 
   updateCores(deltaTime);
   updateHunters(deltaTime);

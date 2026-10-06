@@ -704,6 +704,72 @@ kbd {
 
 .damage-flash.is-active { animation: damage .35s ease-out; }
 
+.victory-flash.is-overload {
+  background: radial-gradient(circle at center, #fff3cc, rgb(255 130 48 / 65%) 32%, transparent 70%);
+  animation: overload-flash .65s ease-out both;
+}
+
+@keyframes overload-flash {
+  0% { opacity: .85; }
+  100% { opacity: 0; }
+}
+
+.energy-minigame {
+  position: absolute;
+  z-index: 7;
+  right: 28px;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  width: min(440px, calc(100% - 32px));
+  padding: 23px 26px;
+  border: 1px solid rgb(215 255 103 / 40%);
+  border-radius: 14px;
+  background: rgb(6 17 12 / 96%);
+  box-shadow: 0 18px 65px rgb(0 0 0 / 45%);
+}
+
+.energy-minigame[hidden] { display: none; }
+.energy-minigame__heading, .energy-minigame__readings { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.energy-minigame .modal__eyebrow { display: block; margin-bottom: 4px; }
+.energy-minigame h2 { margin: 0; font: 700 32px "Barlow Condensed", sans-serif; }
+.energy-minigame__heading > strong { color: var(--amber); font: 700 32px "Barlow Condensed", sans-serif; }
+.energy-minigame p { color: #bec9bf; font-size: 12px; line-height: 1.6; }
+.energy-circuit { display: grid; grid-template-columns: 22px minmax(0, 1fr) 22px; gap: 8px; align-items: center; margin: 15px 0; }
+.energy-circuit__port { color: #5d7266; font-size: 23px; text-align: center; }
+.energy-circuit__port.is-powered { color: var(--acid); text-shadow: 0 0 12px rgb(215 255 103 / 65%); }
+.energy-circuit__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; max-width: 300px; justify-self: center; }
+.energy-circuit__tile { display: block; width: 100%; aspect-ratio: 1; padding: 0; overflow: hidden; border: 1px solid #40594b; border-radius: 7px; background: #15291e; cursor: pointer; touch-action: manipulation; }
+.energy-circuit__tile svg { display: block; width: 100%; height: 100%; }
+.energy-circuit__tile g { transform-origin: 50% 50%; transition: transform .16s ease; }
+.circuit-wire-bed { fill: none; stroke: #07140d; stroke-width: 20; }
+.circuit-wire { fill: none; stroke: #6c8575; stroke-width: 10; stroke-linecap: square; }
+.circuit-joint { fill: #193426; stroke: #6c8575; stroke-width: 4; }
+.energy-circuit__tile:hover, .energy-circuit__tile:focus-visible { outline: 2px solid var(--acid); outline-offset: -3px; background: #243d2c; }
+.energy-circuit__tile.is-powered { border-color: rgb(215 255 103 / 62%); background: #29402a; }
+.energy-circuit__tile.is-powered .circuit-wire { stroke: var(--acid); filter: drop-shadow(0 0 3px rgb(215 255 103 / 70%)); }
+.energy-circuit__tile.is-powered .circuit-joint { fill: var(--acid); stroke: #f3ffcc; }
+.energy-circuit__tile:disabled { cursor: default; }
+.energy-minigame__readings { font-size: 12px; }
+.energy-minigame__heat { height: 5px; margin-top: 10px; overflow: hidden; border-radius: 4px; background: #27332a; }
+.energy-minigame__heat i { display: block; height: 100%; background: var(--amber); }
+.energy-minigame.is-danger { border-color: var(--danger); }
+.energy-minigame.is-danger .energy-minigame__heat i { background: var(--danger); }
+.energy-minigame .energy-minigame__feedback { min-height: 36px; margin: 10px 0 14px; font-size: 11px; }
+.game-shell:has(.energy-minigame:not([hidden])) .controls,
+.game-shell:has(.energy-minigame:not([hidden])) .mobile-ui { visibility: hidden; }
+
+@media (max-height: 580px) {
+  .energy-minigame { right: 16px; bottom: 12px; width: min(440px, calc(100% - 32px)); padding: 12px 18px; }
+  .energy-minigame h2 { font-size: 25px; }
+  .energy-minigame p { margin: 7px 0; font-size: 10px; }
+  .energy-circuit { margin: 8px 0; }
+  .energy-circuit__grid { max-width: 210px; }
+  .energy-minigame .energy-minigame__feedback { min-height: 0; margin: 8px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .energy-circuit__tile g { transition: none; }
+}
+
 @keyframes damage {
   0% { border-width: 20px; border-color: rgb(255 64 52 / 65%); background: rgb(160 10 8 / 12%); }
   100% { border-width: 0; border-color: transparent; background: transparent; }

@@ -136,6 +136,17 @@ def monster_attack() -> np.ndarray:
     return finish(signal, 0.95, 12)
 
 
+def reactor_overload() -> np.ndarray:
+    rng = np.random.default_rng(7318)
+    signal = np.zeros_like(time_axis(1.2))
+    add_noise_burst(signal, rng, 0.0, 0.8, 0.78, 0.68, 6)
+    add_noise_burst(signal, rng, 0.04, 1.1, 0.40, 0.95, 5)
+    add_tone(signal, 0.0, 1.05, 95, 32, 0.9, 6, 0.002)
+    for frequency, gain in ((310, 0.18), (790, 0.13), (1430, 0.07)):
+        add_tone(signal, 0.03, 0.72, frequency, frequency * 0.7, gain, 8, 0.001)
+    return finish(signal, 0.94, 16)
+
+
 def energy_harvest() -> np.ndarray:
     duration = 1.45
     rng = np.random.default_rng(808)
@@ -220,6 +231,7 @@ def main() -> None:
         "monster-attack.wav": monster_attack(),
         "energy-harvest.wav": energy_harvest(),
         "transformer.wav": transformer_sequence(),
+        "robot-overload.wav": reactor_overload(),
     }
     for filename, signal in assets.items():
         write_wave(filename, signal)
